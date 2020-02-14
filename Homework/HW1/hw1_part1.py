@@ -3,7 +3,8 @@
 
 import pyspark
 
-sc = pyspark.SparkContext() # creat a spark context object
+conf = pyspark.SparkConf().setAppName('hw1_part1_ChenyeYang').setMaster('local[*]')
+sc = pyspark.SparkContext(conf=conf) # creat a spark context object
 log_lines = sc.textFile('epa-http.txt') # read file line by line to creat RDDs
 # transform RDDs into pair RDDs ('ip',bytes). Key: IP address. Value: Bytes served.
 # use map() because one input RDD corresponding to one output RDD
