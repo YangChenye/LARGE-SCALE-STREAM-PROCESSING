@@ -43,6 +43,7 @@ schema = StructType([
     StructField('bytes', IntegerType(), True)])
 
 # creat data frame with RDDs and schema
+# columns in log_dataframe are ['ip', 'datetime', 'bytes']
 log_dataframe = spark.createDataFrame(log_pairs, schema)
 
 # with watermark, we can handle the late data properly. Discard very late data and keep not very late data.
