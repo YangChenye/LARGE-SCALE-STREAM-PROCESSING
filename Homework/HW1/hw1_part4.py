@@ -11,7 +11,7 @@ import csv
 # Make a regular expression for validating an Ip-address
 regex = r'(([01]{0,1}\d{0,1}\d|2[0-4]\d|25[0-5])\.){3}([01]{0,1}\d{0,1}\d|2[0-4]\d|25[0-5])'
 
-conf = pyspark.SparkConf().setAppName('hw1_part3_ChenyeYang').setMaster('local[*]') # set the configuration
+conf = pyspark.SparkConf().setAppName('hw1_part4_ChenyeYang').setMaster('local[*]') # set the configuration
 sc = pyspark.SparkContext(conf=conf) # creat a spark context object
 log_lines = sc.textFile('epa-http.txt') # read file line by line to creat RDDs
 # use ' ' to split the string
@@ -37,7 +37,7 @@ log_subnet = log_pairs.map(lambda x: (subnet(x[0]), x[1]))
 # creat a spark session
 spark = SparkSession \
     .builder \
-    .appName('hw1_part3_ChenyeYang') \
+    .appName('hw1_part4_ChenyeYang') \
     .getOrCreate()
 
 # set the schema of data frame
