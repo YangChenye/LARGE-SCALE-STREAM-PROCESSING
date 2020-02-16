@@ -10,7 +10,7 @@ regex = r'(([01]{0,1}\d{0,1}\d|2[0-4]\d|25[0-5])\.){3}([01]{0,1}\d{0,1}\d|2[0-4]
 
 conf = pyspark.SparkConf().setAppName('hw1_part1_ChenyeYang').setMaster('local[*]')
 sc = pyspark.SparkContext(conf=conf) # creat a spark context object
-log_lines = sc.textFile('epa-http.txt') # read file line by line to creat RDDs
+log_lines = sc.textFile('../epa-http.txt') # read file line by line to creat RDDs
 # use ' ' to split the string
 # filter the RDD with valid ip address and valid http return code
 # 302 is not a successful return code, thus '-' should be discarded

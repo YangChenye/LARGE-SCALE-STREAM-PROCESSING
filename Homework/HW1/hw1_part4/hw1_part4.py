@@ -13,7 +13,7 @@ regex = r'(([01]{0,1}\d{0,1}\d|2[0-4]\d|25[0-5])\.){3}([01]{0,1}\d{0,1}\d|2[0-4]
 
 conf = pyspark.SparkConf().setAppName('hw1_part4_ChenyeYang').setMaster('local[*]') # set the configuration
 sc = pyspark.SparkContext(conf=conf) # creat a spark context object
-log_lines = sc.textFile('epa-http.txt') # read file line by line to creat RDDs
+log_lines = sc.textFile('../epa-http.txt') # read file line by line to creat RDDs
 # use ' ' to split the string
 # filter the RDD with valid ip address and valid http return code
 # 302 is not a successful return code, thus '-' should be discarded
@@ -24,10 +24,11 @@ log_lines_validip = log_lines.filter(lambda x: re.search(regex, x.split(' ')[0])
 # 141.243.1.172 [29:23:53:25] "GET /Software.html HTTP/1.0" 200 1497
 log_pairs = log_lines_validip.map(lambda x: (x.split(' ')[0], int(x.split(' ')[-1])))
 
-# find subnet in which the ip belongs to
+# find subnet in which the ip belongs to, use first 6 numbers as the subnet
 def subnet(ip):
     point_location = [i for i in range(len(ip)) if ip.startswith('.', i)][1]
     sub = '{}.*.*'.format(ip[0:point_location])
+    # sub = '{}.*'.format(ip[0:point_location])
     return sub
 
 # divide ips into different subnets
