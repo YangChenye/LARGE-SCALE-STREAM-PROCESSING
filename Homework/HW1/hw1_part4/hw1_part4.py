@@ -46,7 +46,7 @@ schema = StructType([
     StructField('subnet', StringType(), True),
     StructField('bytes', IntegerType(), True)])
 
-# creat data frame with RDDs and schema
+# create data frame with RDDs and schema
 # columns in log_dataframe are ['subnet', 'bytes']
 log_dataframe = spark.createDataFrame(log_subnet, schema)
 
@@ -54,7 +54,7 @@ log_dataframe = spark.createDataFrame(log_subnet, schema)
 # sort by subnet in string ascending order so 100.*.*.* comes before 99.*.*.*
 log_csv = log_dataframe.groupBy('subnet').agg(sum('bytes')).sort('subnet', ascending=True)
 
-print(log_csv.count())
+print('The total number of items: {}'.format(log_csv.count()))
 log_csv.show(20, truncate=False)
 
 # save RDD as CSV

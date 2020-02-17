@@ -7,11 +7,12 @@ import csv
 import argparse
 
 # add command line arguments with parameter K and default number and help
+# usage in command line: python hw1_part2.py -h or python hw1_part2.py -K 10
 parser = argparse.ArgumentParser(description='Homework 1 Part 2 from Chenye Yang')
 parser.add_argument("-K", default=10, help="K is an integer number, to get the top K IPs that were served the most number of bytes")
 
 args = parser.parse_args()
-K = args.K
+K = int(args.K)
 
 # Make a regular expression for validating an Ip-address
 regex = r'(([01]{0,1}\d{0,1}\d|2[0-4]\d|25[0-5])\.){3}([01]{0,1}\d{0,1}\d|2[0-4]\d|25[0-5])'
@@ -34,6 +35,7 @@ log_ip_total_bytes = log_ip_bytes_pairs.reduceByKey(lambda x, y: x + y)
 # sort the pair RDDs by value, from large to small
 log_sort_by_total_bytes = log_ip_total_bytes.sortBy(lambda x: x[1], ascending=False)
 # after the sort done, we can directly use take() to "Take the first num elements of the RDD"
+print('First Method')
 print(log_sort_by_total_bytes.take(K))
 # [('piankhi.cs.hamptonu.edu', 7267751), ('e659229.boeing.com', 5260561), ('139.121.98.45', 5041738), ......
 
@@ -41,6 +43,7 @@ print(log_sort_by_total_bytes.take(K))
 # or we can ues the top() function to "Get the top N elements from an RDD",
 # and choose the key function as the value in pairs.
 # this method don't need to use sortBy() function to sort RDDs first
+print('Second Method')
 print(log_ip_total_bytes.top(K, lambda x: x[1]))
 # [('piankhi.cs.hamptonu.edu', 7267751), ('e659229.boeing.com', 5260561), ('139.121.98.45', 5041738), ......
 

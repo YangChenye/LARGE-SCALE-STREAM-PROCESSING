@@ -10,7 +10,7 @@ regex = r'(([01]{0,1}\d{0,1}\d|2[0-4]\d|25[0-5])\.){3}([01]{0,1}\d{0,1}\d|2[0-4]
 
 conf = pyspark.SparkConf().setAppName('hw1_part1_ChenyeYang').setMaster('local[*]')
 sc = pyspark.SparkContext(conf=conf) # creat a spark context object
-log_lines = sc.textFile('../epa-http.txt') # read file line by line to creat RDDs
+log_lines = sc.textFile('../epa-http.txt') # read file line by line to create RDDs
 # use ' ' to split the string
 # filter the RDD with valid ip address and valid http return code
 # 302 is not a successful return code, thus '-' should be discarded
@@ -28,6 +28,8 @@ f = open('hw1_part1.csv', 'w', newline='')
 f_csv = csv.writer(f)
 f_csv.writerows(log_sort_by_ip.collect())
 
-print(log_lines_validip.count())
-print(log_sort_by_ip.count()) # count the number of different IPs
-print(log_sort_by_ip.take(20)) # check the total bytes served to first IP
+print('The number of lines with valid IP address and HTTP request: {}'.format(log_lines_validip.count()))
+# count the number of different IPs
+print('The number of different IPs: {}'.format(log_sort_by_ip.count()))
+# check the total bytes served to first 20 IP
+print('The total bytes served to first 20 IP: {}'.format(log_sort_by_ip.take(20)))

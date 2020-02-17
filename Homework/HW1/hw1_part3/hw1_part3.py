@@ -29,8 +29,8 @@ log_pairs = log_lines_validip.map(lambda x:
                            datetime.strptime('20-01-{}{}'.format(x.split(' ')[1][1:3], x.split(' ')[1][4:-1]), '%y-%m-%d%H:%M:%S'),
                            int(x.split(' ')[-1])))
 
-# use spark sql to ensure the deal with log data in even time, rather than received time, i.e. deal with the late data
-# creat a spark session
+# use Spark Structured Streaming to ensure the deal with log data in even time, rather than received time, i.e. deal with the late data
+# create a spark session
 spark = SparkSession \
     .builder \
     .appName('hw1_part3_ChenyeYang') \
@@ -48,7 +48,7 @@ log_dataframe = spark.createDataFrame(log_pairs, schema)
 
 # with watermark, we can handle the late data properly. Discard very late data and keep not very late data.
 # with window size = 60min slide = 60min, we group the log in one hour by "datetime"
-# with groupBy, we groups the DataFrame using the specified columns, so we can run aggregation on them.
+# with groupBy, we group the DataFrame using the specified columns, so we can run aggregation on them.
 # with agg, we aggregate the items in window and "ip", the result should be the sum of "bytes"
 # with orderBy, we get new DataFrame sorted by the specified column(s) by timestamp ascending and total bytes descending
 # with show, we print 20 sorted items without truncating strings longer than 20 chars
@@ -60,6 +60,7 @@ log_windowed = log_dataframe \
     .groupBy(window(log_dataframe.datetime, '60 minutes', '60 minutes'), log_dataframe.ip) \
     .agg(sum('bytes')) \
     .orderBy(['window.start', 'sum(bytes)'], ascending=[True, False])
+print('All the windowed data')
 log_windowed.show(20, truncate=False)
 
 # window.start and window.end are timestamps and we can use the built in method to get year(), month(), day()
@@ -70,6 +71,7 @@ log_specific_time_interval = log_windowed \
     .filter('day(window.start) == 30') \
     .filter('Hour(window.start) == 00 AND Hour(window.end) == 01')
 
+print('Data in specific time interval')
 log_specific_time_interval.show(20, truncate=False)
 
 # drop the 'window' column because it is not in output csv file
