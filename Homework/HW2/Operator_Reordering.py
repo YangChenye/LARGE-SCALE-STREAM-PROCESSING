@@ -5,7 +5,7 @@ import pyspark
 import re
 import csv
 import random
-from time import process_time_ns
+from time import process_time
 import matplotlib.pyplot as plt
 
 # First operator is A, second operator is B
@@ -47,22 +47,35 @@ if __name__ == '__main__':
 
     # Not reordered
     for selectRateB in selectRateBs:
-        start = process_time_ns()
+        start = process_time()
         A_B(sc, selectRateA, selectRateB, allowOutput=False)
-        end = process_time_ns()
+        end = process_time()
         A_B_time = end - start
+        print(A_B_time)
         throughput_A_B.append(A_B_time)
 
     # Reordered
     for selectRateB in selectRateBs:
-        start = process_time_ns()
+        start = process_time()
         B_A(sc, selectRateA, selectRateB, allowOutput=False)
-        end = process_time_ns()
+        end = process_time()
         B_A_time = end - start
+        print(B_A_time)
         throughput_B_A.append(B_A_time)
 
-    plt.plot(selectRateBs, throughput_A_B, 'r', label='INPUT--A--B--OUTPUT')
-    plt.plot(selectRateBs, throughput_B_A, 'b', label='INPUT--B--A--OUTPUT')
+
+    throughput_A_B = list(map(lambda x: 1 / x, throughput_A_B))
+    throughput_B_A = list(map(lambda x: 1 / x, throughput_B_A))
+
+
+    maxInAB = max(throughput_A_B)
+    minInAB = 0
+    throughput_A_B = list(map(lambda x: (x - minInAB) / (maxInAB - minInAB), throughput_A_B))
+    throughput_B_A = list(map(lambda x: (x - minInAB) / (maxInAB - minInAB), throughput_B_A))
+
+
+    plt.plot(selectRateBs, throughput_A_B, 'r-', label='Not reordered')
+    plt.plot(selectRateBs, throughput_B_A, 'b--', label='Reordered')
     plt.xlabel('Selectivity of B')
     plt.ylabel('Throughput')
     plt.legend()
