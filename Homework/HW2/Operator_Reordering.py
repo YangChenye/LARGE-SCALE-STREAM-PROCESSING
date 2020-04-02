@@ -9,12 +9,11 @@ from time import process_time
 import matplotlib.pyplot as plt
 
 # First operator is A, second operator is B
-def A_B(sc, selectRateA, selectRateB, allowOutput = False):
-    log_lines = sc.textFile('epa-http.txt')  # read file line by line to create RDDs
+def A_B(log_lines, selectRateA, selectRateB, allowOutput = False):
     # stream pass through operator A
-    log_lines_A = log_lines.filter(lambda x: random.random() <= selectRateA)
+    log_lines_A = log_lines.filter(lambda x: random.random() < selectRateA)
     # stream pass through operator B
-    log_lines_B = log_lines_A.filter(lambda x: random.random() <= selectRateB)
+    log_lines_B = log_lines_A.filter(lambda x: random.random() < selectRateB)
     if allowOutput:
         print('INPUT--A--B--OUTPUT'.center(40, '*'))
         print('Lines input: {}'.format(log_lines.count()))
@@ -22,12 +21,11 @@ def A_B(sc, selectRateA, selectRateB, allowOutput = False):
         print('Lines after operator B: {}'.format(log_lines_B.count()))
 
 # First operator is B, second operator is A
-def B_A(sc, selectRateA, selectRateB, allowOutput = False):
-    log_lines = sc.textFile('epa-http.txt')  # read file line by line to create RDDs
+def B_A(log_lines, selectRateA, selectRateB, allowOutput = False):
     # stream pass through operator B
-    log_lines_B = log_lines.filter(lambda x: random.random() <= selectRateB)
+    log_lines_B = log_lines.filter(lambda x: random.random() < selectRateB)
     # stream pass through operator A
-    log_lines_A = log_lines_B.filter(lambda x: random.random() <= selectRateA)
+    log_lines_A = log_lines_B.filter(lambda x: random.random() < selectRateA)
     if allowOutput:
         print('INPUT--B--A--OUTPUT'.center(40, '*'))
         print('Lines input: {}'.format(log_lines.count()))
@@ -41,6 +39,7 @@ if __name__ == '__main__':
 
     conf = pyspark.SparkConf().setAppName('Operator_Reordering').setMaster('local[*]')
     sc = pyspark.SparkContext.getOrCreate(conf=conf)  # creat a spark context object
+    log_lines = sc.textFile('epa-http.txt')  # read file line by line to create RDDs
 
     throughput_A_B = []
     throughput_B_A = []
@@ -48,7 +47,7 @@ if __name__ == '__main__':
     # Not reordered
     for selectRateB in selectRateBs:
         start = process_time()
-        A_B(sc, selectRateA, selectRateB, allowOutput=False)
+        A_B(log_lines, selectRateA, selectRateB, allowOutput=False)
         end = process_time()
         A_B_time = end - start
         print(A_B_time)
@@ -57,7 +56,7 @@ if __name__ == '__main__':
     # Reordered
     for selectRateB in selectRateBs:
         start = process_time()
-        B_A(sc, selectRateA, selectRateB, allowOutput=False)
+        B_A(log_lines, selectRateA, selectRateB, allowOutput=False)
         end = process_time()
         B_A_time = end - start
         print(B_A_time)
