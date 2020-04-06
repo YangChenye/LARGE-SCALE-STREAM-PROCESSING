@@ -7,6 +7,7 @@ from time import process_time, sleep
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+from multiprocessing.dummy import Pool as ThreadPool
 
 # First operator is A, second operator is B
 def A_B(log_lines, selectRateA, selectRateB,commu_cost, allowOutput = False):
@@ -76,7 +77,7 @@ if __name__ == '__main__':
     selectRateA = 0.5 # the selectivity of operator A is fixed at 0.5
     selectRateB = 0.5
     commu_costs = [i/10 for i in range(1, 50)] # the selectivity of operator B varies
-    allowOutput = True # allow printing of number of tuples processed
+    allowOutput = False # allow printing of number of tuples processed
     runs = 50 # run the system for many times to smooth the throughput curve
     conf = pyspark.SparkConf().setAppName('FUSION').setMaster('local[*]')
     sc = pyspark.SparkContext.getOrCreate(conf=conf)  # creat a spark context object
@@ -85,8 +86,8 @@ if __name__ == '__main__':
     # store the throughput of different runs
     throughput_A_Bs = []
     throughput_ABs = []
-    # run the system for many times and calculate the average
-    for i in range(runs):
+
+    def process(run):
         # the throughput of the systems with different select rate
         throughput_A_B = []
         throughput_AB = []
@@ -115,6 +116,13 @@ if __name__ == '__main__':
 
         throughput_A_Bs.append(throughput_A_B)
         throughput_ABs.append(throughput_AB)
+
+    # run the system for many times and calculate the average, using multi-threads
+    # for i in range(runs):
+    pool = ThreadPool(8)
+    pool.map(process, [i for i in range(runs)])
+    pool.close()
+    pool.join()
 
     # average the throughput to smooth the curve
     throughput_A_B_mean = np.mean(np.array(throughput_A_Bs), axis=0).tolist()
