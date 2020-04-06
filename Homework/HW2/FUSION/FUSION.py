@@ -8,8 +8,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-
-
 # First operator is A, second operator is B
 def A_B(log_lines, selectRateA, selectRateB,commu_cost, allowOutput = False):
     input_A = log_lines.count()
@@ -18,7 +16,7 @@ def A_B(log_lines, selectRateA, selectRateB,commu_cost, allowOutput = False):
     log_lines_A = log_lines.filter(lambda x: random.random() < selectRateA) # only pass through some tuple
     # we add a small constant number to the cost of processing each tuple, to avoid the arithmetic overflow
     for i in range(input_A):
-        sleep(10e-6)
+        sleep(1e-6)
     end = process_time()
     time_A = end - start
     cost_A = time_A / input_A # the computation cost (per tuple) of operator A
@@ -29,7 +27,7 @@ def A_B(log_lines, selectRateA, selectRateB,commu_cost, allowOutput = False):
     log_lines_B = log_lines_A.filter(lambda x: random.random() < selectRateB)
     # we add a small constant number to the cost of processing each tuple, to avoid the arithmetic overflow
     for i in range(input_B):
-        sleep(10e-6)
+        sleep(1e-6)
     end = process_time()
     time_B = end - start
     cost_B = time_B / input_B # the computation cost (per tuple) of operator B
@@ -50,7 +48,7 @@ def AB(log_lines, selectRateA, selectRateB, commu_cost,allowOutput = False):
     log_lines_A = log_lines.filter(lambda x: random.random() < selectRateA)  # only pass through some tuple
     # we add a small constant number to the cost of processing each tuple, to avoid the arithmetic overflow
     for i in range(input_A):
-        sleep(10e-6)
+        sleep(1e-6)
     end = process_time()
     time_A = end - start
     cost_A = time_A / input_A  # the computation cost (per tuple) of operator A
@@ -61,7 +59,7 @@ def AB(log_lines, selectRateA, selectRateB, commu_cost,allowOutput = False):
     log_lines_B = log_lines_A.filter(lambda x: random.random() < selectRateB)
     # we add a small constant number to the cost of processing each tuple, to avoid the arithmetic overflow
     for i in range(input_B):
-        sleep(10e-6)
+        sleep(1e-6)
     end = process_time()
     time_B = end - start
     cost_B = time_B / input_B  # the computation cost (per tuple) of operator B
@@ -80,10 +78,9 @@ if __name__ == '__main__':
     commu_costs = [i/10 for i in range(1, 50)] # the selectivity of operator B varies
     allowOutput = True # allow printing of number of tuples processed
     runs = 50 # run the system for many times to smooth the throughput curve
-    cwd = os.getcwd()
     conf = pyspark.SparkConf().setAppName('FUSION').setMaster('local[*]')
     sc = pyspark.SparkContext.getOrCreate(conf=conf)  # creat a spark context object
-    log_lines = sc.textFile(cwd + "\\epa-http.txt")  # read file line by line to create RDDs
+    log_lines = sc.textFile("epa-http.txt")  # read file line by line to create RDDs
 
     # store the throughput of different runs
     throughput_A_Bs = []
