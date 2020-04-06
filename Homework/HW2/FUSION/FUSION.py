@@ -68,7 +68,7 @@ def AB(log_lines, selectRateA, selectRateB, commu_cost,allowOutput = False):
         print('Lines after operator A: {}'.format(log_lines_A.count()))
         print('Lines after operator B: {}'.format(log_lines_B.count()))
     # No communication costs
-    cost_AB = (cost_A + cost_B)*(1-1/commu_cost)
+    cost_AB = (cost_A + cost_B)*(1/(1+1/commu_cost))
     return cost_AB
 
 
