@@ -1,5 +1,5 @@
-# Created by Zhuoyue Xing on 2020/4/02.
-# Copyright © 2020 Zhuoyue Xing. All rights reserved.
+# Created by Zhuoyue Xing, Chenye Yang on 2020/4/2.
+# Copyright © 2020 Zhuoyue Xing, Chenye Yang. All rights reserved.
 
 import pyspark
 import random
