@@ -39,7 +39,7 @@ def A_B(log_lines, selectRateA, selectRateB,commu_cost, allowOutput = False):
         print('Lines after operator B: {}'.format(log_lines_B.count()))
 
     # the computation cost (per tuple) without reordering
-    cost_A_B = cost_A + selectRateA * cost_B*(1+1/commu_cost)
+    cost_A_B = cost_A + selectRateA * cost_B
     return cost_A_B
 
 # Fusion
@@ -70,7 +70,7 @@ def AB(log_lines, selectRateA, selectRateB, commu_cost,allowOutput = False):
         print('Lines after operator A: {}'.format(log_lines_A.count()))
         print('Lines after operator B: {}'.format(log_lines_B.count()))
     # No communication costs
-    cost_AB = cost_A +  cost_B
+    cost_AB = (cost_A + cost_B)*(1-1/commu_cost)
     return cost_AB
 
 
