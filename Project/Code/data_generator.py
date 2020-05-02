@@ -23,6 +23,10 @@ class Send_Thread(threading.Thread):
             sock.send(data)
             print(sock.recv(1024).decode("utf-8"))
             data = (data == b'1') and b'2' or b'1'  # change to another type of value each time
+            global stop_send_Thread
+            if stop_send_Thread:
+                stop_send_Thread = False # reset this Flag so that another send_Thread can start
+                break # break the loop and then this thread is terminated
     def run(self) -> None: # override run() in Thread. When start() is called, run() is called.
         print('Start sending generated data')
         self.send_data()
@@ -41,9 +45,15 @@ class Recv_Thread(threading.Thread):
         while True:  # wait for connection
             connection, address = sock.accept()
             control = connection.recv(1024).decode("utf-8")
-            if control == '0':
+            if control == 'stop_send_Thread':
                 connection.send(b'Stop signal received, closing now')
-                sys.exit(0)
+                global stop_send_Thread
+                stop_send_Thread = True
+            elif control == 'start_send_Thread':
+                connection.send(b'Start signal received, starting now')
+                send_Thread = Send_Thread(threadID=1, name='send_Thread')
+                send_Thread.start()
+                send_Thread.join()
             connection.send(b'received')
             connection.close()
             print('The control signal received is: ' + control)
@@ -53,10 +63,16 @@ class Recv_Thread(threading.Thread):
 
 
 if __name__ == "__main__":
+    global stop_send_Thread
+    stop_send_Thread = False
+    # initialize classes
     send_Thread = Send_Thread(threadID=1, name='send_Thread')
     recv_Thread = Recv_Thread(threadID=2, name='recv_Thread')
-
+    # start threads
     send_Thread.start()
     recv_Thread.start()
+    # wait till threads terminate
+    send_Thread.join()
+    recv_Thread.join()
 
 
