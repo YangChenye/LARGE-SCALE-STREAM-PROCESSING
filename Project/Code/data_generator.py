@@ -4,6 +4,7 @@
 import socket
 import time
 import threading
+from random import randint
 
 # format the print output
 class Color:
@@ -18,6 +19,24 @@ class Color:
    UNDERLINE = '\033[4m'
    END = '\033[0m'
 
+# data generator
+class Data_Generator():
+    def __init__(self, rate, ipNum, protocolNum, ipPercent, protocolPercent):
+        self.rate = rate # <int> Hz
+        self.ipNum = ipNum # <int> less than or equal to 15
+        self.protocolNum = protocolNum # <int> less than or equal to 19
+        self.ipPercent = ipPercent # <float list>
+        self.protocolPercent = protocolPercent # <float list>
+        self.protocols = ['SOAP', 'SSDP', 'TCAP', 'UPnP', 'DHCP', 'DNS', 'HTTP', 'HTTPS', 'NFS', 'POP3', 'SMTP', 'SNMP',
+                          'FTP', 'NTP', 'IRC', 'Telnet', 'SSH', 'TFTP', 'AMQP']
+        self.ips = ['53.215.218.189', '133.98.231.165', '222.186.237.75', '11.71.50.83', '45.43.227.63',
+                    '116.168.68.91', '20.232.17.27', '158.223.93.237', '84.191.253.211', '153.17.103.198',
+                    '224.80.117.250', '97.211.109.139', '21.50.108.54', '109.126.189.56', '90.227.18.21']
+    def data_generator(self):
+        packetSize = randint(16, 12288) # generate the size of network packet, Byte
+
+
+
 # data sending thread of data generator
 class Send_Data_Thread(threading.Thread):
     def __init__(self, threadID, name):
@@ -30,8 +49,8 @@ class Send_Data_Thread(threading.Thread):
             sock.connect(('localhost', 12301)) # port localhost:12301 is used to send data
         except socket.error:
             print('{}{}ERROR:{}{} Stream Processor is NOT listening for data. Start it, then restart send_Data_Thread.'.format(Color.RED, Color.BOLD, Color.END, Color.END))
-            sock.close()
-            return
+            sock.close() # close socket before exit
+            return # then this thread is terminated
         data = b'1'
         print('{}{}GOOD:{}{} Connection complete. Data Generator is sending generated data, to port 12301.'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
         try:
@@ -43,7 +62,7 @@ class Send_Data_Thread(threading.Thread):
                 global stop_send_Thread
                 if stop_send_Thread:
                     stop_send_Thread = False # reset this Flag so that another send_Thread can start
-                    sock.close()
+                    sock.close() # close socket before exit
                     return # break the loop and then this thread is terminated
         except socket.error:
             print('Connection is closed by a peer. Waiting for start send_Data_Thread manually.')
@@ -77,7 +96,7 @@ class Recv_Control_Thread(threading.Thread):
             connection.send(b'received')
             connection.close()
             print('The control signal received is: ' + control)
-    def run(self) -> None:
+    def run(self) -> None: # override run() in Thread. When start() is called, run() is called.
         # print('Start listening to control signal')
         self.recv_control()
 

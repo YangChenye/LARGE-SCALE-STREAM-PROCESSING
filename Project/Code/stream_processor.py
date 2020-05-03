@@ -44,7 +44,7 @@ class Recv_Control_Thread(threading.Thread):
             connection.send(b'Control signal received')
             connection.close()
             print('The control signal received is: ' + control)
-    def run(self) -> None:
+    def run(self) -> None: # override run() in Thread. When start() is called, run() is called.
         # print('Start listening to control signal')
         self.recv_control()
 
@@ -65,17 +65,17 @@ class Recv_Data_Thread(threading.Thread):
                 while True:  # wait for data
                     global stop_receive_Thread
                     if stop_receive_Thread:
-                        stop_receive_Thread = False
-                        connection.close()
-                        sock.close()
-                        return
+                        stop_receive_Thread = False # reset this Flag so that another send_Thread can start
+                        connection.close() # close socket connection
+                        sock.close() # close socket before exit
+                        return # then this thread is terminated
                     data = connection.recv(1024).decode("utf-8")
                     print('Received data: {}'.format(data))
                     connection.send(b'Data received')
             except socket.error:
                 print('{}{}ERROR:{}{} Connection is closed by a peer. Closing our connection and wait for new one'.format(Color.RED, Color.BOLD, Color.END, Color.END))
             connection.close()
-    def run(self) -> None:
+    def run(self) -> None: # override run() in Thread. When start() is called, run() is called.
         # print('Start listening to data signal')
         self.recv_data()
 
