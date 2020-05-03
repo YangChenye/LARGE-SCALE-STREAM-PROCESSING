@@ -8,6 +8,7 @@ if __name__ == "__main__":
     sock.connect(('localhost', 12302)) # port localhost:12302 to send control signal to data_generator
     # control = b'stop_send_Thread' # control signal to send
     control = b'start_send_Thread'
+    # control = b'stop_receive_Data_Thread'
     sock.send(control)
     print(sock.recv(1024).decode("utf-8"))
     sock.close()
