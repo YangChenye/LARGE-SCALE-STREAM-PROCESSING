@@ -18,12 +18,49 @@ class Color:
    UNDERLINE = '\033[4m'
    END = '\033[0m'
 
+# stream processor
+class Stream_Processor():
+    def __init__(self, H, T, k, X):
+        self.H = H
+        self.T = T
+        self.k = k
+        self.X = X
+
+    def change_parameter(self, H, T, k, X):
+        self.H = H
+        self.T = T
+        self.k = k
+        self.X = X
+    # List protocols that are consuming more than H percent of the total external
+    # bandwidth over the last T time units
+    def function1(self):
+        return
+    # List the top-k most resource intensive protocols over the last T time units
+    def function2(self):
+        return
+    # List all protocols that are consuming more than X times the standard deviation of
+    # the average traffic consumption of all protocols over the last T time units
+    def function3(self):
+        return
+    # List IP addresses that are consuming more than H percent of the total external
+    # bandwidth over the last T time units
+    def function4(self):
+        return
+    # List the top-k most resource intensive IP addresses over the last T time units
+    def function5(self):
+        return
+    # List all IP addresses that are consuming more than X times the standard deviation
+    # of the average traffic consumption of all IP addresses over the last T time units
+    def function6(self):
+        return
+
 # control receiving thread of stream processor
 class Recv_Control_Thread(threading.Thread):
     def __init__(self, threadID, name):
         threading.Thread.__init__(self)
         self.threadID = threadID
         self.name = name
+
     def recv_control(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(('localhost', 12303))  # port localhost:12303 is used to receive control signal
@@ -44,6 +81,7 @@ class Recv_Control_Thread(threading.Thread):
             connection.send(b'Control signal received')
             connection.close()
             print('The control signal received is: ' + control)
+
     def run(self) -> None: # override run() in Thread. When start() is called, run() is called.
         # print('Start listening to control signal')
         self.recv_control()
@@ -54,6 +92,7 @@ class Recv_Data_Thread(threading.Thread):
         threading.Thread.__init__(self)
         self.threadID = threadID
         self.name = name
+
     def recv_data(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(('localhost', 12301))  # port localhost:12301 is used to receive generated data
@@ -75,6 +114,7 @@ class Recv_Data_Thread(threading.Thread):
             except socket.error:
                 print('{}{}ERROR:{}{} Connection is closed by a peer. Closing our connection and wait for new one'.format(Color.RED, Color.BOLD, Color.END, Color.END))
             connection.close()
+
     def run(self) -> None: # override run() in Thread. When start() is called, run() is called.
         # print('Start listening to data signal')
         self.recv_data()

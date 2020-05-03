@@ -32,9 +32,12 @@ class Data_Generator():
         self.ips = ['53.215.218.189', '133.98.231.165', '222.186.237.75', '11.71.50.83', '45.43.227.63',
                     '116.168.68.91', '20.232.17.27', '158.223.93.237', '84.191.253.211', '153.17.103.198',
                     '224.80.117.250', '97.211.109.139', '21.50.108.54', '109.126.189.56', '90.227.18.21']
+
     def data_generator(self):
         packetSize = randint(16, 12288) # generate the size of network packet, Byte
 
+        dataToSend = ''
+        return dataToSend
 
 
 # data sending thread of data generator
@@ -43,6 +46,7 @@ class Send_Data_Thread(threading.Thread):
         threading.Thread.__init__(self)
         self.threadID = threadID
         self.name = name
+
     def send_data(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
@@ -66,6 +70,7 @@ class Send_Data_Thread(threading.Thread):
                     return # break the loop and then this thread is terminated
         except socket.error:
             print('Connection is closed by a peer. Waiting for start send_Data_Thread manually.')
+
     def run(self) -> None: # override run() in Thread. When start() is called, run() is called.
         # print('Start sending generated data')
         self.send_data()
@@ -76,6 +81,7 @@ class Recv_Control_Thread(threading.Thread):
         threading.Thread.__init__(self)
         self.threadID = threadID
         self.name = name
+
     def recv_control(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(('localhost', 12302))  # port localhost:12302 is used to receive control signal
@@ -96,6 +102,7 @@ class Recv_Control_Thread(threading.Thread):
             connection.send(b'received')
             connection.close()
             print('The control signal received is: ' + control)
+
     def run(self) -> None: # override run() in Thread. When start() is called, run() is called.
         # print('Start listening to control signal')
         self.recv_control()
