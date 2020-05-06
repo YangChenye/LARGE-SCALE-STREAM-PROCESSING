@@ -52,11 +52,14 @@ class Send_Data_Thread(threading.Thread):
         try:
             sock.connect(('localhost', 12301)) # port localhost:12301 is used to send data
         except socket.error:
-            print('{}{}ERROR:{}{} Stream Processor is NOT listening for data. Start it, then restart send_Data_Thread.'.format(Color.RED, Color.BOLD, Color.END, Color.END))
+            print(
+                '{}{}ERROR:{}{} Stream Processor is NOT listening for data. Start it, then restart send_Data_Thread.'.format(
+                    Color.RED, Color.BOLD, Color.END, Color.END))
             sock.close() # close socket before exit
             return # then this thread is terminated
         data = b'1'
-        print('{}{}GOOD:{}{} Connection complete. Data Generator is sending generated data, to port 12301.'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
+        print('{}{}GOOD:{}{} Connection complete. Data Generator is sending generated data, to port 12301.'.format(
+            Color.GREEN, Color.BOLD, Color.END, Color.END))
         try:
             while True:
                 time.sleep(3)
@@ -71,8 +74,8 @@ class Send_Data_Thread(threading.Thread):
         except socket.error:
             print('Connection is closed by a peer. Waiting for start send_Data_Thread manually.')
 
-    def run(self) -> None: # override run() in Thread. When start() is called, run() is called.
-        # print('Start sending generated data')
+    def run(self) -> None:
+        # override run() in Thread. When start() is called, run() is called.
         self.send_data()
 
 # control receiving thread of data generator
@@ -86,7 +89,8 @@ class Recv_Control_Thread(threading.Thread):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(('localhost', 12302))  # port localhost:12302 is used to receive control signal
         sock.listen(5)  # the max connection number, FIFO
-        print('{}{}GOOD:{}{} Connection complete. Data Generator is listening control signal, from port 12302.'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
+        print('{}{}GOOD:{}{} Connection complete. Data Generator is listening control signal, from port 12302.'.format(
+            Color.GREEN, Color.BOLD, Color.END, Color.END))
         while True:  # wait for connection
             connection, address = sock.accept()
             control = connection.recv(1024).decode("utf-8")
@@ -103,14 +107,15 @@ class Recv_Control_Thread(threading.Thread):
             connection.close()
             print('The control signal received is: ' + control)
 
-    def run(self) -> None: # override run() in Thread. When start() is called, run() is called.
-        # print('Start listening to control signal')
+    def run(self) -> None:
+        # override run() in Thread. When start() is called, run() is called.
         self.recv_control()
 
 
 if __name__ == "__main__":
-    global stop_send_Thread
+    # global variables for data generator
     stop_send_Thread = False
+
     print(' Data Generator is starting '.center(100, '*'))
     # initialize classes
     send_Data_Thread = Send_Data_Thread(threadID=1, name='send_Data_Thread')

@@ -31,27 +31,39 @@ class Stream_Processor():
         self.T = T
         self.k = k
         self.X = X
+
     # List protocols that are consuming more than H percent of the total external
     # bandwidth over the last T time units
     def function1(self):
+
         return
+
     # List the top-k most resource intensive protocols over the last T time units
     def function2(self):
+
         return
+
     # List all protocols that are consuming more than X times the standard deviation of
     # the average traffic consumption of all protocols over the last T time units
     def function3(self):
+
         return
+
     # List IP addresses that are consuming more than H percent of the total external
     # bandwidth over the last T time units
     def function4(self):
+
         return
+
     # List the top-k most resource intensive IP addresses over the last T time units
     def function5(self):
+
         return
+
     # List all IP addresses that are consuming more than X times the standard deviation
     # of the average traffic consumption of all IP addresses over the last T time units
     def function6(self):
+
         return
 
 # control receiving thread of stream processor
@@ -65,7 +77,9 @@ class Recv_Control_Thread(threading.Thread):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(('localhost', 12303))  # port localhost:12303 is used to receive control signal
         sock.listen(5)  # the max connection number, FIFO
-        print('{}{}GOOD:{}{} Connection complete. Stream Processor is listening control signal, from port 12303.'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
+        print(
+            '{}{}GOOD:{}{} Connection complete. Stream Processor is listening control signal, from port 12303.'.format(
+                Color.GREEN, Color.BOLD, Color.END, Color.END))
         while True:  # wait for connection
             connection, address = sock.accept()
             control = connection.recv(1024).decode("utf-8")
@@ -82,8 +96,8 @@ class Recv_Control_Thread(threading.Thread):
             connection.close()
             print('The control signal received is: ' + control)
 
-    def run(self) -> None: # override run() in Thread. When start() is called, run() is called.
-        # print('Start listening to control signal')
+    def run(self) -> None:
+        # override run() in Thread. When start() is called, run() is called.
         self.recv_control()
 
 # data receiving thread of stream processor
@@ -97,7 +111,8 @@ class Recv_Data_Thread(threading.Thread):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(('localhost', 12301))  # port localhost:12301 is used to receive generated data
         sock.listen(5)  # the max connection number, FIFO
-        print('{}{}GOOD:{}{} Connection complete. Stream Processor is listening data, from port 12301.'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
+        print('{}{}GOOD:{}{} Connection complete. Stream Processor is listening data, from port 12301.'.format(
+            Color.GREEN, Color.BOLD, Color.END, Color.END))
         while True:  # wait for connection
             connection, address = sock.accept()
             try:
@@ -112,15 +127,17 @@ class Recv_Data_Thread(threading.Thread):
                     print('Received data: {}'.format(data))
                     connection.send(b'Data received')
             except socket.error:
-                print('{}{}ERROR:{}{} Connection is closed by a peer. Closing our connection and wait for new one'.format(Color.RED, Color.BOLD, Color.END, Color.END))
+                print(
+                    '{}{}ERROR:{}{} Connection is closed by a peer. Closing our connection and wait for new one'.format(
+                        Color.RED, Color.BOLD, Color.END, Color.END))
             connection.close()
 
-    def run(self) -> None: # override run() in Thread. When start() is called, run() is called.
-        # print('Start listening to data signal')
+    def run(self) -> None:
+        # override run() in Thread. When start() is called, run() is called.
         self.recv_data()
 
 if __name__ == "__main__":
-    global stop_receive_Thread
+    # global variables
     stop_receive_Thread = False
     print('Stream Processor is starting'.center(100, '*'))
     # initialize classes
