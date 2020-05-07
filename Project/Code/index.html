@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<title>demo</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<style>
+    body {font-family: "Lato", sans-serif}
+    .mySlides {display: none}
+</style>
+
+<script lang="javascript" type="text/javascript">
+    var output1;
+    var output2;
+    var websocket1;
+    var websocket2;
+    function init(){
+        output1 = document.getElementById("output1");
+        output2 = document.getElementById("output2");
+    } // end init
+    function connect1(){
+        //open socket
+        if ("WebSocket" in window){
+            // echo test website "ws://echo.websocket.org/"
+            websocket1 = new WebSocket("ws://localhost:12302");
+            output1.innerHTML = "connecting..." ;
+            //attach event handlers
+            websocket1.onopen = onOpen1;
+            websocket1.onclose = onClose1;
+            websocket1.onmessage = onMessage1;
+            websocket1.onerror = onError1;
+        } else {
+            alert("WebSockets not supported on your browser.");
+        } // end if
+    } // end connect
+    function onOpen1(evt){
+        //called as soon as a connection is opened
+        output1.innerHTML = "<p>Connected</p>";
+    } // end onOpen
+    function onClose1(evt){
+        //called when connection is severed
+        output1.innerHTML += "<p>Disconnected</p>";
+    } // end onClose;
+    function onMessage1(evt){
+        //called on receipt of message
+        output1.innerHTML += "<p class = 'response'>Response: " + evt.data + "</p>";
+    } // end onMessage
+    function onError1(evt){
+        //called on error
+        output1.innerHTML += "<p class = 'error'>Error: " + evt.data + "</p>";
+    } // end onError
+    function sendMessage1(){
+        //get message from text field
+        rate = document.getElementById("rate").value;
+        ipnum = document.getElementById("ipnumber").value;
+        pronum = document.getElementById("pronumber").value;
+        ippercent = document.getElementById("ippercent").value;
+        propercent = document.getElementById("propercent").value;
+        //pass message to server
+        message = rate + '\t' + ipnum + '\t' + pronum + '\t' + ippercent + '\t' + propercent;
+        websocket1.send(message);
+        output1.innerHTML += "<p>Message sent: " + message + "</p>";
+    } // end sendMessage
+
+    function connect2(){
+        //open socket
+        if ("WebSocket" in window){
+            websocket2 = new WebSocket("ws://localhost:12303");
+            output2.innerHTML = "connecting..." ;
+            //attach event handlers
+            websocket2.onopen = onOpen2;
+            websocket2.onclose = onClose2;
+            websocket2.onmessage = onMessage2;
+            websocket2.onerror = onError2;
+        } else {
+            alert("WebSockets not supported on your browser.");
+        } // end if
+    } // end connect
+    function onOpen2(evt){
+        //called as soon as a connection is opened
+        output2.innerHTML = "<p>Connected</p>";
+    } // end onOpen
+    function onClose2(evt){
+        //called when connection is severed
+        output2.innerHTML += "<p>Disconnected</p>";
+    } // end onClose;
+    function onMessage2(evt){
+        //called on receipt of message
+        output2.innerHTML += "<p class = 'response'>Response: " + evt.data + "</p>";
+    } // end onMessage
+    function onError2(evt){
+        //called on error
+        output2.innerHTML += "<p class = 'error'>Error: " + evt.data + "</p>";
+    } // end onError
+    function sendMessage2(){
+        //get message from text field
+        H = document.getElementById("H").value;
+        T = document.getElementById("T").value;
+        k = document.getElementById("k").value;
+        X = document.getElementById("X").value;
+        //pass message to server
+        message = H + '\t' + T + '\t' + k + '\t' + X;
+        websocket2.send(message);
+        output2.innerHTML += "<p>Message sent: " + message + "</p>";
+    } // end sendMessage
+</script>
+
+
+<body onload = "init()">
+
+<!-- Navbar -->
+<div class="w3-top">
+    <div class="w3-bar w3-black w3-card">
+        <a class="w3-bar-item w3-button w3-padding-large w3-hide-medium w3-hide-large w3-right" href="javascript:void(0)" onclick="myFunction()" title="Toggle Navigation Menu"><i class="fa fa-bars"></i></a>
+        <a href="#" class="w3-bar-item w3-button w3-padding-large">HOME</a>
+        <a href="#simulator" class="w3-bar-item w3-button w3-padding-large w3-hide-small">SIMULATOR</a>
+        <a href="#result" class="w3-bar-item w3-button w3-padding-large w3-hide-small">RESULT</a>
+        <a href="javascript:void(0)" class="w3-padding-large w3-hover-red w3-hide-small w3-right"><i class="fa fa-search"></i></a>
+    </div>
+</div>
+
+<!-- Navbar on small screens (remove the onclick attribute if you want the navbar to always show on top of the content when clicking on the links) -->
+<div id="navDemo" class="w3-bar-block w3-black w3-hide w3-hide-large w3-hide-medium w3-top" style="margin-top:46px">
+    <a href="#simulator" class="w3-bar-item w3-button w3-padding-large" onclick="myFunction()">SIMULATOR</a>
+    <a href="#result" class="w3-bar-item w3-button w3-padding-large" onclick="myFunction()">RESULT</a>
+</div>
+
+<!-- Page content -->
+<div class="w3-content" style="max-width:2000px;margin-top:46px">
+
+    <!-- The Simulator Section -->
+    <div class="w3-container w3-content w3-padding-32" style="max-width:800px" id="simulator">
+        <h2 class="w3-center w3-padding-16">SIMULATOR</h2>
+        <p class="w3-opacity w3-center"><i>This demo simulates the query-based network monitoring application.</i></p>
+        <p class="w3-opacity w3-center"><i>Set and change parameters below, and find simulation results at the bottom.</i></p>
+        <div class="w3-row w3-padding-32">
+            <div class="w3-col m5">
+                <form action = "">
+                    <button class="w3-button w3-black w3-block w3-section" type = "button" onclick = "connect1()">connect to generator</button>
+                    <input type="text" class="w3-input w3-border" id = "rate"  placeholder="Rate:int number(Hz)">
+                    <input type="text" class="w3-input w3-border" id = "ipnumber"  placeholder="IP Number:less or equal to 15">
+                    <input type="text" class="w3-input w3-border" id = "pronumber"  placeholder="Protocol Number:less or equal to 19">
+                    <input type="text" class="w3-input w3-border" id = "ippercent"  placeholder="IP Percent:float number(percentage)">
+                    <input type="text" class="w3-input w3-border" id = "propercent"  placeholder="Protocol Percent:float number(percentage)">
+                    <button class="w3-button w3-black w3-block w3-section" type = "button" onclick = "sendMessage1()">send message</button>
+                    <button class="w3-button w3-black w3-block w3-section" type = "button" onclick = "websocket1.close()">disconnect</button>
+                    <div id="output1">Click 'connect' button to connect</div>
+                </form>
+            </div>
+
+            <div class="w3-col m5 w3-right">
+                <form action="">
+                    <button class="w3-button w3-black w3-block w3-section" type = "button" onclick = "connect2()">connect to processor</button>
+                    <input class="w3-input w3-border" id = "H" type="text" placeholder="H:Threshold percentage">
+                    <input class="w3-input w3-border" id = "T" placeholder="T:Time duration">
+                    <input class="w3-input w3-border" id = "k" placeholder="k:Top k results">
+                    <input class="w3-input w3-border" id = "X" placeholder="X:Multiplier of standard deviation">
+                    <button class="w3-button w3-black w3-block w3-section" type = "button" onclick = "sendMessage2()">send message</button>
+                    <button class="w3-button w3-black w3-block w3-section" type = "button" onclick = "websocket2.close()">disconnect</button>
+                    <div id="output2">Click 'connect' button to connect</div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- The Result Section -->
+    <div class="w3-container w3-content w3-center w3-padding-32" style="max-width:800px" id="result">
+        <h2 class="w3-center w3-padding-16">RESULT</h2>
+        <p class="w3-opacity"><i>The simulation results are shown below.</i></p>
+    </div>
+
+    <!-- End Page Content -->
+</div>
+
+
+</body>
+</html>
