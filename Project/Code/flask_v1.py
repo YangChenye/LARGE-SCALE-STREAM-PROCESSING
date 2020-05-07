@@ -1,3 +1,5 @@
+# Created by Zhuoyue Xing on 2020/5/6.
+# Copyright © 2020 Zhuoyue Xing. All rights reserved.
 from flask import Flask,Response
 from flask import jsonify
 from flask import request
@@ -13,7 +15,7 @@ mongo = PyMongo(app)
 _host = "0.0.0.0"
 _port = 8099
 
-
+#get all data from dataset
 @app.route('/6889final/getall', methods=['GET'])
 def get_all():
     location = mongo.db.E6889final
@@ -22,7 +24,7 @@ def get_all():
         output.append({'time': c['time'],'func1':c['func1'],'func2':c['func2'],'func3':c['func3'],'func4':c['func4'], 'func5' :c['func5'], 'func6': c['func6']})
     return jsonify({'result' : output})
 
-
+#insert data to dataset
 @app.route('/6889final/insert', methods=['POST'])
 def insert_by_sensornumber():
     result = None
