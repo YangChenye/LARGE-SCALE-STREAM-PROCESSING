@@ -73,10 +73,10 @@ def delete_6889final_all():
 @app.route('/6889final/getrecent1', methods=['GET'])
 def get_recent_6889final():
     data = mongo.db.E6889final
-    output = []
     for c in data.find().sort([('time', -1)]).limit(1):
-        output.append({'time': c['time'],'func1':c['func1'],'func2':c['func2'],'func3':c['func3'],'func4':c['func4'], 'func5' :c['func5'], 'func6': c['func6']})
-    return jsonify({'result' : output})
+        result={'time': c['time'],'func1':c['func1'],'func2':c['func2'],'func3':c['func3'],'func4':c['func4'], 'func5' :c['func5'], 'func6': c['func6']}
+    rsp = Response(json.dumps(result), status=200, content_type="application/json")
+    return rsp
 
 
 def handle_error(e, result):
