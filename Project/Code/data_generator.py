@@ -79,7 +79,8 @@ class Data_Generator():
                 break
         destinationIP = self.ips[i]
         packetSize = random.randint(16, 12288)  # generate the size of network packet, Byte
-        time = datetime.now(tz=pytz.timezone('US/Eastern'))
+        time = datetime.now(tz=pytz.timezone('US/Eastern')).strftime('%Y-%m-%d_%H:%M:%S.%f')
+        # time = datetime.now(tz=pytz.timezone('US/Eastern'))
         dataToSend = '{} {} {} {} {}'.format(time, protocol, sourceIP, destinationIP, packetSize)
         return dataToSend
 
@@ -98,32 +99,60 @@ class Send_Data_Thread(threading.Thread):
 
     def send_data(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            sock.connect(('localhost', 12301)) # port localhost:12301 is used to send data
-        except socket.error:
-            print(
-                '{}{}ERROR:{}{} Stream Processor is NOT listening for data. Start it, then restart send_Data_Thread.'.format(
-                    Color.RED, Color.BOLD, Color.END, Color.END))
-            sock.close() # close socket before exit
-            return # then this thread is terminated
-        # data = b'1'
-        data_Generator = Data_Generator(self.rate, self.ipNum, self.protocolNum, self.ipPercent, self.protocolPercent)
-        print('{}{}GOOD:{}{} Connection complete. Data Generator is sending generated data, to port 12301.'.format(
+        '''
+        First attempt: 
+        data_generator: socket client, sending data
+        stream processor: socket server, receiving data
+        '''
+        # try:
+        #     sock.connect(('localhost', 12301)) # port localhost:12301 is used to send data
+        # except socket.error:
+        #     print(
+        #         '{}{}ERROR:{}{} Stream Processor is NOT listening for data. Start it, then restart send_Data_Thread.'.format(
+        #             Color.RED, Color.BOLD, Color.END, Color.END))
+        #     sock.close() # close socket before exit
+        #     return # then this thread is terminated
+        # # data = b'1'
+        # data_Generator = Data_Generator(self.rate, self.ipNum, self.protocolNum, self.ipPercent, self.protocolPercent)
+        # print('{}{}GOOD:{}{} Connection complete. Data Generator is sending generated data, to port 12301.'.format(
+        #     Color.GREEN, Color.BOLD, Color.END, Color.END))
+        # try:
+        #     while True:
+        #         time.sleep(1 / self.rate) # sending frequency
+        #         data = '{}{}'.format(data_Generator.data_generator(), '\n').encode('utf-8')
+        #         print('Data sending: ' + str(data))
+        #         sock.send(data)
+        #         sock.recv(1024).decode("utf-8")
+        #         global stop_send_Thread
+        #         if stop_send_Thread:
+        #             stop_send_Thread = False # reset this Flag so that another send_Thread can start
+        #             sock.close() # close socket before exit
+        #             return # break the loop and then this thread is terminated
+        # except socket.error:
+        #     print('Connection is closed by a peer. Waiting for start send_Data_Thread manually.')
+        '''
+        Second attempt: 
+        data_generator: socket server, wait for connection from spark streaming
+        stream processor: spark streaming, initiative connect to socket server
+        '''
+        sock.bind(('localhost', 12301))
+        sock.listen(5)
+        print('{}{}GOOD:{}{} Connection complete. Data Generator is listening for spark stream, from port 12301.'.format(
             Color.GREEN, Color.BOLD, Color.END, Color.END))
+        connection, address = sock.accept()
+        data_Generator = Data_Generator(self.rate, self.ipNum, self.protocolNum, self.ipPercent, self.protocolPercent)
         try:
             while True:
-                time.sleep(1 / self.rate) # sending frequency
-                data = data_Generator.data_generator().encode('utf-8')
-                print('Data sending: ' + str(data))
-                sock.send(data)
-                sock.recv(1024).decode("utf-8")
+                time.sleep(1 / self.rate)  # sending frequency
+                data = '{}{}'.format(data_Generator.data_generator(), '\n').encode('utf-8')
+                connection.send(data)
                 global stop_send_Thread
                 if stop_send_Thread:
                     stop_send_Thread = False # reset this Flag so that another send_Thread can start
                     sock.close() # close socket before exit
                     return # break the loop and then this thread is terminated
         except socket.error:
-            print('Connection is closed by a peer. Waiting for start send_Data_Thread manually.')
+            print('Connection is closed by a peer. Please manually restart the data generator.')
 
     def run(self) -> None:
         # override run() in Thread. When start() is called, run() is called.
@@ -140,7 +169,7 @@ class Recv_Control_Thread(threading.Thread):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(('localhost', 12302))  # port localhost:12302 is used to receive control signal
         sock.listen(5)  # the max connection number, FIFO
-        print('{}{}GOOD:{}{} Connection complete. Data Generator is listening control signal, from port 12302.'.format(
+        print('{}{}GOOD:{}{} Connection complete. Data Generator is listening for control signal, from port 12302.'.format(
             Color.GREEN, Color.BOLD, Color.END, Color.END))
         while True:  # wait for connection
             connection, address = sock.accept()
@@ -160,6 +189,7 @@ class Recv_Control_Thread(threading.Thread):
                                                     protocolNum=protocolNum, ipPercent=ipPercent,
                                                     protocolPercent=protocolPercent)
                 send_Data_Thread.start()
+                print('{}{}GOOD:{}{} Data sending thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
                 send_Data_Thread.join()
             connection.send(b'received')
             connection.close()

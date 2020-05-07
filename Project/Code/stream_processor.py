@@ -4,6 +4,12 @@
 import socket
 import time
 import threading
+import pyspark
+from pyspark.streaming import StreamingContext
+from pyspark.sql import *
+from pyspark.sql.types import *
+from datetime import datetime
+from pyspark.sql.functions import *
 
 # format the print output
 class Color:
@@ -19,12 +25,15 @@ class Color:
    END = '\033[0m'
 
 # stream processor
-class Stream_Processor():
-    def __init__(self, H, T, k, X):
-        self.H = H
-        self.T = T
-        self.k = k
-        self.X = X
+class Stream_Processor_Thread(threading.Thread):
+    def __init__(self, threadID, name, H, T, k, X):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.H = H # threshold percentage
+        self.T = T # time duration
+        self.k = k # top k results
+        self.X = X # multiplier of standard deviation
 
     def change_parameter(self, H, T, k, X):
         self.H = H
@@ -35,6 +44,24 @@ class Stream_Processor():
     # List protocols that are consuming more than H percent of the total external
     # bandwidth over the last T time units
     def function1(self):
+        # with watermark, we can handle the late data properly. Discard very late data and keep not very late data.
+        # with window size = T seconds slide = 1 second, we group the log in T seconds by "datetime"
+        # with groupBy, we group the DataFrame using the specified columns, so we can run aggregation on them.
+        # with agg, we aggregate the items in window and "ip", the result should be the sum of "bytes"
+        # with orderBy, we get new DataFrame sorted by the specified column(s) by timestamp ascending and total bytes descending
+        # with show, we print 20 sorted items without truncating strings longer than 20 chars
+        # CONTENT IN log_windowed:
+        # columns in log_windowed are ['window', 'protocol', 'sum(packet_size)']
+        # data types are [('window', 'struct<start:timestamp,end:timestamp>'), ('ip', 'string'), ('sum(bytes)', 'bigint')]
+
+        log_windowed = self.log_dataframe \
+            .withWatermark('datetime', '1 minute') \
+            .groupBy(window(self.log_dataframe.datetime, '{} seconds'.format(self.T), '1 second'),
+                     self.log_dataframe.protocol) \
+            .agg(sum('packet_size')) \
+            .orderBy(['window.start', 'sum(packet_size)'], ascending=[True, False])
+        print('All the windowed data')
+        log_windowed.show(20, truncate=False)
 
         return
 
@@ -66,6 +93,38 @@ class Stream_Processor():
 
         return
 
+    # override run() in Thread. When start() is called, run() is called.
+    def run(self) -> None:
+        self.conf = pyspark.SparkConf().setAppName('Project').setMaster('local[*]')  # set the configuration
+        self.sc = pyspark.SparkContext(conf=self.conf)  # creat a spark context object
+        self.ssc = StreamingContext(self.sc, self.T)  # take all data received in T second
+        self.log_lines = self.ssc.socketTextStream('localhost', 12301)
+        # (datetime, protocol, source IP, destination IP, packet size)
+        self.log_tuples = self.log_lines.map(lambda x: (
+            datetime.strptime(x.split(' ')[0], '%Y-%m-%d_%H:%M:%S.%f'), x.split(' ')[1], x.split(' ')[2],
+            x.split(' ')[3], int(x.split(' ')[4])))
+        # use Spark Structured Streaming to ensure the deal with log data in even time,
+        # rather than received time, i.e. deal with the late data
+        # create a spark session
+        self.spark = SparkSession \
+            .builder \
+            .appName('project') \
+            .getOrCreate()
+        # set the schema of data frame
+        self.schema = StructType([
+            StructField('datetime', TimestampType(), True),
+            StructField('protocol', StringType(), True),
+            StructField('source_ip', StringType(), True),
+            StructField('destination_ip', StringType(), True),
+            StructField('packet_size', IntegerType(), True)])
+        # creat data frame with RDDs and schema
+        # columns in log_dataframe are ['datetime', 'protocol', 'source_ip', 'destination_ip', 'packet_size']
+        self.log_dataframe = self.spark.createDataFrame(self.log_tuples, self.schema)
+        self.function1()
+        self.log_tuples.pprint()
+        self.ssc.start()
+        self.ssc.awaitTermination()
+
 # control receiving thread of stream processor
 class Recv_Control_Thread(threading.Thread):
     def __init__(self, threadID, name):
@@ -96,8 +155,8 @@ class Recv_Control_Thread(threading.Thread):
             connection.close()
             print('The control signal received is: ' + control)
 
+    # override run() in Thread. When start() is called, run() is called.
     def run(self) -> None:
-        # override run() in Thread. When start() is called, run() is called.
         self.recv_control()
 
 # data receiving thread of stream processor
@@ -132,22 +191,36 @@ class Recv_Data_Thread(threading.Thread):
                         Color.RED, Color.BOLD, Color.END, Color.END))
             connection.close()
 
+    # override run() in Thread. When start() is called, run() is called.
     def run(self) -> None:
-        # override run() in Thread. When start() is called, run() is called.
         self.recv_data()
 
 if __name__ == "__main__":
-    # global variables
-    stop_receive_Thread = False
-    print('Stream Processor is starting'.center(100, '*'))
-    # initialize classes
-    recv_Data_Thread = Recv_Data_Thread(threadID=1, name='recv_Data_Thread')
-    recv_Control_Thread = Recv_Control_Thread(threadID=2, name='recv_Control_Thread')
-    # start threads
-    recv_Data_Thread.start()
-    print('{}{}GOOD:{}{} Data receiving thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
-    recv_Control_Thread.start()
-    print('{}{}GOOD:{}{} Control receiving thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
-    # wait till threads terminate
-    recv_Data_Thread.join()
-    recv_Control_Thread.join()
+    '''
+    First attempt: 
+    data_generator: socket client, sending data
+    stream processor: socket server, receiving data
+    '''
+    # # global variables
+    # stop_receive_Thread = False
+    # print('Stream Processor is starting'.center(100, '*'))
+    # # initialize classes
+    # recv_Data_Thread = Recv_Data_Thread(threadID=1, name='recv_Data_Thread')
+    # recv_Control_Thread = Recv_Control_Thread(threadID=2, name='recv_Control_Thread')
+    # # start threads
+    # recv_Data_Thread.start()
+    # print('{}{}GOOD:{}{} Data receiving thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
+    # recv_Control_Thread.start()
+    # print('{}{}GOOD:{}{} Control receiving thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
+    # # wait till threads terminate
+    # recv_Data_Thread.join()
+    # recv_Control_Thread.join()
+    '''
+    Second attempt: 
+    data_generator: socket server, wait for connection from spark streaming
+    stream processor: spark streaming, initiative connect to socket server
+    '''
+    stream_Processor_Thread = Stream_Processor_Thread(threadID=3, name='stream_Processor_Thread', H=0.2, T=10, k=3, X=2)
+    stream_Processor_Thread.start()
+    print('{}{}GOOD:{}{} Stream processor thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
+    stream_Processor_Thread.join()
