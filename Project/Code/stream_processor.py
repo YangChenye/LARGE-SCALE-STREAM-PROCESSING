@@ -66,13 +66,30 @@ class Stream_Processor_Thread(threading.Thread):
         # log_windowed.show(20, truncate=False)
 
         '''Not using watermark'''
-        self.log_tuples.count()
+        log_simple = self.log_tuples.map(lambda x: (x[1], x[4])) # ('protocol', packet_size)
+        log_agg = log_simple.reduceByKey(lambda x,y: x+y)
+        def countWords(newValues, lastSum):
+            if lastSum is None :
+                lastSum = 0
+            return sum(newValues, lastSum)
+        # log_reduced = log_agg.reduce(lambda x: x[1] > self.H)
+        # log_reduced = log_agg.updateStateByKey(update_func)
+
+        log_reduced = log_agg.reduce(countWords)
+        print('protocols that are consuming more than {} percent of the total external bandwidth over the last {} time units'.format(self.H, self.T))
+        log_reduced.pprint()
 
         return
 
     # List the top-k most resource intensive protocols over the last T time units
     def function2(self):
-
+        log_simple = self.log_tuples.map(lambda x: (x[1], x[4])) # ('protocol', packet_size)
+        log_agg = log_simple.reduceByKey(lambda x, y: x + y) # sum up the packet sizes
+        log_sorted = log_agg.transform(lambda rdd: rdd.sortBy(lambda x: x[1], ascending=False)) # sort, top-k
+        print('the top-{} most resource intensive protocols over the last {} time units'.format(self.k, self.T))
+        # log_sorted.pprint(num=self.k)
+        log_top_k = log_sorted.take(self.k)
+        print([' '.join(map(str, item)) for item in log_top_k])
         return
 
     # List all protocols that are consuming more than X times the standard deviation of
@@ -104,11 +121,28 @@ class Stream_Processor_Thread(threading.Thread):
         self.sc = pyspark.SparkContext(conf=self.conf)  # creat a spark context object
         self.sc.setLogLevel("ERROR")
         self.ssc = StreamingContext(self.sc, self.T)  # take all data received in T second
+        # self.ssc.checkpoint('/Users/yangchenye/Downloads/spark_checkpoint')
         self.log_lines = self.ssc.socketTextStream('localhost', 12301)
         # (datetime, protocol, source IP, destination IP, packet size)
         self.log_tuples = self.log_lines.map(lambda x: (
             datetime.strptime(x.split(' ')[0], '%Y-%m-%d_%H:%M:%S.%f'), x.split(' ')[1], x.split(' ')[2],
             x.split(' ')[3], int(x.split(' ')[4])))
+        '''
+        -------------------------------------------
+        Time: 2020-05-07 13:15:50
+        -------------------------------------------
+        (datetime.datetime(2020, 5, 7, 13, 15, 40, 179311), 'SOAP', '53.215.218.189', '45.43.227.63', 4626)
+        (datetime.datetime(2020, 5, 7, 13, 15, 40, 381757), 'UPnP', '45.43.227.63', '133.98.231.165', 2818)
+        (datetime.datetime(2020, 5, 7, 13, 15, 40, 585995), 'SSDP', '53.215.218.189', '222.186.237.75', 3243)
+        (datetime.datetime(2020, 5, 7, 13, 15, 40, 788869), 'DNS', '45.43.227.63', '45.43.227.63', 9320)
+        (datetime.datetime(2020, 5, 7, 13, 15, 40, 992985), 'SSDP', '11.71.50.83', '11.71.50.83', 9013)
+        (datetime.datetime(2020, 5, 7, 13, 15, 41, 194503), 'DNS', '222.186.237.75', '45.43.227.63', 915)
+        (datetime.datetime(2020, 5, 7, 13, 15, 41, 395340), 'UPnP', '53.215.218.189', '133.98.231.165', 6200)
+        (datetime.datetime(2020, 5, 7, 13, 15, 41, 599333), 'UPnP', '222.186.237.75', '45.43.227.63', 6927)
+        (datetime.datetime(2020, 5, 7, 13, 15, 41, 803432), 'SOAP', '45.43.227.63', '133.98.231.165', 1834)
+        (datetime.datetime(2020, 5, 7, 13, 15, 42, 7557), 'SSDP', '45.43.227.63', '45.43.227.63', 3442)
+        ...
+        '''
         '''Attempt to use structured streaming and watermark'''
         # # use Spark Structured Streaming to ensure the deal with log data in even time,
         # # rather than received time, i.e. deal with the late data
@@ -130,7 +164,7 @@ class Stream_Processor_Thread(threading.Thread):
         # self.function1()
         '''Not using watermark'''
         # self.log_tuples.pprint()
-        self.function1()
+        self.function2()
 
         self.ssc.start()
         self.ssc.awaitTermination()
@@ -230,7 +264,7 @@ if __name__ == "__main__":
     data_generator: socket server, wait for connection from spark streaming
     stream processor: spark streaming, initiative connect to socket server
     '''
-    stream_Processor_Thread = Stream_Processor_Thread(threadID=3, name='stream_Processor_Thread', H=0.2, T=10, k=3, X=2)
+    stream_Processor_Thread = Stream_Processor_Thread(threadID=3, name='stream_Processor_Thread', H=0.2, T=5, k=3, X=2)
     stream_Processor_Thread.start()
     print('{}{}GOOD:{}{} Stream processor thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
     stream_Processor_Thread.join()

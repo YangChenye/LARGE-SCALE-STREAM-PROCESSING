@@ -153,6 +153,7 @@ class Send_Data_Thread(threading.Thread):
                     return # break the loop and then this thread is terminated
         except socket.error:
             print('Connection is closed by a peer. Please manually restart the data generator.')
+            sock.close()
 
     def run(self) -> None:
         # override run() in Thread. When start() is called, run() is called.
