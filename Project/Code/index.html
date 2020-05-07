@@ -12,14 +12,18 @@
 </style>
 
 <script lang="javascript" type="text/javascript">
+
     var output1;
     var output2;
-    var websocket1;
-    var websocket2;
+    var output3;
     function init(){
         output1 = document.getElementById("output1");
         output2 = document.getElementById("output2");
+        output3 = document.getElementById("output3");
     } // end init
+
+    // connect with generator and processor
+    var websocket1;
     function connect1(){
         //open socket
         if ("WebSocket" in window){
@@ -64,6 +68,7 @@
         output1.innerHTML += "<p>Message sent: " + message + "</p>";
     } // end sendMessage
 
+    var websocket2;
     function connect2(){
         //open socket
         if ("WebSocket" in window){
@@ -105,6 +110,17 @@
         websocket2.send(message);
         output2.innerHTML += "<p>Message sent: " + message + "</p>";
     } // end sendMessage
+
+
+    // connect with database, send http request
+    function sendRequest() {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+            output3.innerHTML = this.responseText;
+        };
+        xhttp.open("GET", "text.txt", true);
+        xhttp.send();
+    }
 </script>
 
 
@@ -168,7 +184,11 @@
     <!-- The Result Section -->
     <div class="w3-container w3-content w3-center w3-padding-32" style="max-width:800px" id="result">
         <h2 class="w3-center w3-padding-16">RESULT</h2>
-        <p class="w3-opacity"><i>The simulation results are shown below.</i></p>
+        <p class="w3-opacity"><i>The simulation results are shown by clicking the button below.</i></p>
+        <div class="w3-row w3-padding-16">
+            <button class="w3-button w3-black w3-block w3-section" type = "button" onclick = "sendRequest()">show result</button>
+            <div id="output3">Results are shown here.</div>
+        </div>
     </div>
 
     <!-- End Page Content -->
