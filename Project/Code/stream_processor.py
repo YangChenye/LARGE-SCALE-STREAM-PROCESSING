@@ -188,7 +188,7 @@ class Recv_Control_Thread(threading.Thread):
         while True:  # wait for connection
             connection, address = sock.accept()
             control = connection.recv(1024).decode("utf-8")
-            if control == 'stop_receive_Data_Thread':
+            if control == 'stop':
                 connection.send(b'Stop receiving data signal received, closing now')
                 global stop_receive_Thread
                 stop_receive_Thread = True
@@ -210,11 +210,35 @@ class Recv_Control_Thread(threading.Thread):
 def recv_control():
     '''using websocket to communicate with web ui'''
     async def generator(websocket, path):
+        global H
+        global T
+        global k
+        global X
+        global stop_receive_Thread
+        print('{}{}GOOD:{}{} Control receiving thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
         msg = await websocket.recv()
         print(msg)
-
-        response = 'KEKW'
-        await websocket.send(response)
+        response = 'RCVD'
+        if msg == 'stop':
+            # response = 'stop signal received, closing now'
+            stop_receive_Thread = True
+        elif msg == 'start':
+            # response = 'start signal received, starting now'
+            stream_Processor_Thread = Stream_Processor_Thread(threadID=3, name='stream_Processor_Thread', H=H, T=T, k=k,
+                                                              X=X)
+            stream_Processor_Thread.start()
+            print('{}{}GOOD:{}{} Stream processor thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
+            stream_Processor_Thread.join()
+        elif msg.split('_')[0] == 'change':
+            stop_receive_Thread = True
+            time.sleep(0.5)  # wait for the thread ending
+            msgs = msg.split('_')
+            H, T, k, X = float(msgs[1]), int(msgs[2]), int(msgs[3]), float(msgs[4])
+            stream_Processor_Thread = Stream_Processor_Thread(threadID=3, name='stream_Processor_Thread', H=H, T=T, k=k,
+                                                              X=X)
+            stream_Processor_Thread.start()
+            print('{}{}GOOD:{}{} Stream processor thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
+            stream_Processor_Thread.join()
 
     start_server = websockets.serve(generator, "localhost", 12303) # port localhost:12303 is used to receive control signal
 
@@ -295,7 +319,12 @@ if __name__ == "__main__":
     data_generator: socket server, wait for connection from spark streaming
     stream processor: spark streaming, initiative connect to socket server
     '''
-    stream_Processor_Thread = Stream_Processor_Thread(threadID=3, name='stream_Processor_Thread', H=0.2, T=5, k=3, X=2)
+    H = 0.2
+    T = 5
+    k = 3
+    X = 2
+    stop_receive_Thread = False
+    stream_Processor_Thread = Stream_Processor_Thread(threadID=3, name='stream_Processor_Thread', H=H, T=T, k=k, X=X)
     stream_Processor_Thread.start()
     print('{}{}GOOD:{}{} Stream processor thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
     stream_Processor_Thread.join()

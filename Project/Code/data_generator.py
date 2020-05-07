@@ -230,23 +230,21 @@ def recv_control():
             send_Data_Thread.join()
         elif msg.split('_')[0] == 'change':
             stop_send_Thread = True
-            time.sleep(1) # wait for the thread ending
+            time.sleep(0.5) # wait for the thread ending
             msgs = msg.split('_')
-            rate = int(msgs[0])
-            ipNum = int(msgs[1])
-            protocolNum = int(msgs[2])
-            # ipPercent =
+            rate = int(msgs[1])
+            ipNum = int(msgs[2])
+            protocolNum = int(msgs[3])
+            ipPercent = list(map(lambda x: float(x), msgs[4][1:-1].split(',')))
+            protocolPercent = list(map(lambda x: float(x), msgs[5][1:-1].split(',')))
             send_Data_Thread = Send_Data_Thread(threadID=1, name='send_Data_Thread', rate=rate, ipNum=ipNum,
                                                 protocolNum=protocolNum, ipPercent=ipPercent,
                                                 protocolPercent=protocolPercent)
             send_Data_Thread.start()
             print('{}{}GOOD:{}{} Data sending thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
             send_Data_Thread.join()
-
         await websocket.send(response)
-
     start_server = websockets.serve(generator, "localhost", 12302) # port localhost:12302 is used to receive control signal
-
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()
 
