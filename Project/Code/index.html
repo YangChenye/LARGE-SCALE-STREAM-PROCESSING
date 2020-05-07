@@ -63,7 +63,7 @@
         ippercent = document.getElementById("ippercent").value;
         propercent = document.getElementById("propercent").value;
         //pass message to server
-        message = rate + '\t' + ipnum + '\t' + pronum + '\t' + ippercent + '\t' + propercent;
+        message = 'change_' + rate + '_' + ipnum + '_' + pronum + '_' + ippercent + '_' + propercent;
         websocket1.send(message);
         output1.innerHTML += "<p>Message sent: " + message + "</p>";
     } // end sendMessage
@@ -106,7 +106,7 @@
         k = document.getElementById("k").value;
         X = document.getElementById("X").value;
         //pass message to server
-        message = H + '\t' + T + '\t' + k + '\t' + X;
+        message = 'change_'+ H + '_' + T + '_' + k + '_' + X;
         websocket2.send(message);
         output2.innerHTML += "<p>Message sent: " + message + "</p>";
     } // end sendMessage
@@ -118,7 +118,7 @@
         xhttp.onreadystatechange = function() {
             output3.innerHTML = this.responseText;
         };
-        xhttp.open("GET", "text.txt", true);
+        xhttp.open("GET", "", true);
         xhttp.send();
     }
 </script>
