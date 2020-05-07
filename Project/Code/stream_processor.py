@@ -44,6 +44,8 @@ class Stream_Processor_Thread(threading.Thread):
     # List protocols that are consuming more than H percent of the total external
     # bandwidth over the last T time units
     def function1(self):
+        '''Attempt to use structured streaming and watermark'''
+
         # with watermark, we can handle the late data properly. Discard very late data and keep not very late data.
         # with window size = T seconds slide = 1 second, we group the log in T seconds by "datetime"
         # with groupBy, we group the DataFrame using the specified columns, so we can run aggregation on them.
@@ -54,14 +56,17 @@ class Stream_Processor_Thread(threading.Thread):
         # columns in log_windowed are ['window', 'protocol', 'sum(packet_size)']
         # data types are [('window', 'struct<start:timestamp,end:timestamp>'), ('ip', 'string'), ('sum(bytes)', 'bigint')]
 
-        log_windowed = self.log_dataframe \
-            .withWatermark('datetime', '1 minute') \
-            .groupBy(window(self.log_dataframe.datetime, '{} seconds'.format(self.T), '1 second'),
-                     self.log_dataframe.protocol) \
-            .agg(sum('packet_size')) \
-            .orderBy(['window.start', 'sum(packet_size)'], ascending=[True, False])
-        print('All the windowed data')
-        log_windowed.show(20, truncate=False)
+        # log_windowed = self.log_dataframe \
+        #     .withWatermark('datetime', '1 minute') \
+        #     .groupBy(window(self.log_dataframe.datetime, '{} seconds'.format(self.T), '1 second'),
+        #              self.log_dataframe.protocol) \
+        #     .agg(sum('packet_size')) \
+        #     .orderBy(['window.start', 'sum(packet_size)'], ascending=[True, False])
+        # print('All the windowed data')
+        # log_windowed.show(20, truncate=False)
+
+        '''Not using watermark'''
+        self.log_tuples.count()
 
         return
 
@@ -97,31 +102,36 @@ class Stream_Processor_Thread(threading.Thread):
     def run(self) -> None:
         self.conf = pyspark.SparkConf().setAppName('Project').setMaster('local[*]')  # set the configuration
         self.sc = pyspark.SparkContext(conf=self.conf)  # creat a spark context object
+        self.sc.setLogLevel("ERROR")
         self.ssc = StreamingContext(self.sc, self.T)  # take all data received in T second
         self.log_lines = self.ssc.socketTextStream('localhost', 12301)
         # (datetime, protocol, source IP, destination IP, packet size)
         self.log_tuples = self.log_lines.map(lambda x: (
             datetime.strptime(x.split(' ')[0], '%Y-%m-%d_%H:%M:%S.%f'), x.split(' ')[1], x.split(' ')[2],
             x.split(' ')[3], int(x.split(' ')[4])))
-        # use Spark Structured Streaming to ensure the deal with log data in even time,
-        # rather than received time, i.e. deal with the late data
-        # create a spark session
-        self.spark = SparkSession \
-            .builder \
-            .appName('project') \
-            .getOrCreate()
-        # set the schema of data frame
-        self.schema = StructType([
-            StructField('datetime', TimestampType(), True),
-            StructField('protocol', StringType(), True),
-            StructField('source_ip', StringType(), True),
-            StructField('destination_ip', StringType(), True),
-            StructField('packet_size', IntegerType(), True)])
-        # creat data frame with RDDs and schema
-        # columns in log_dataframe are ['datetime', 'protocol', 'source_ip', 'destination_ip', 'packet_size']
-        self.log_dataframe = self.spark.createDataFrame(self.log_tuples, self.schema)
+        '''Attempt to use structured streaming and watermark'''
+        # # use Spark Structured Streaming to ensure the deal with log data in even time,
+        # # rather than received time, i.e. deal with the late data
+        # # create a spark session
+        # self.spark = SparkSession \
+        #     .builder \
+        #     .appName('project') \
+        #     .getOrCreate()
+        # # set the schema of data frame
+        # self.schema = StructType([
+        #     StructField('datetime', TimestampType(), True),
+        #     StructField('protocol', StringType(), True),
+        #     StructField('source_ip', StringType(), True),
+        #     StructField('destination_ip', StringType(), True),
+        #     StructField('packet_size', IntegerType(), True)])
+        # # creat data frame with RDDs and schema
+        # # columns in log_dataframe are ['datetime', 'protocol', 'source_ip', 'destination_ip', 'packet_size']
+        # self.log_dataframe = self.spark.createDataFrame(self.log_tuples, self.schema)
+        # self.function1()
+        '''Not using watermark'''
+        # self.log_tuples.pprint()
         self.function1()
-        self.log_tuples.pprint()
+
         self.ssc.start()
         self.ssc.awaitTermination()
 
