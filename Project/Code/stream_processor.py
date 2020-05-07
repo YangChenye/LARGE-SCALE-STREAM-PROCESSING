@@ -10,6 +10,10 @@ from pyspark.sql import *
 from pyspark.sql.types import *
 from datetime import datetime
 from pyspark.sql.functions import *
+import requests
+import json
+
+
 
 # format the print output
 class Color:
@@ -205,6 +209,18 @@ class Recv_Data_Thread(threading.Thread):
     def run(self) -> None:
         self.recv_data()
 
+
+#url here is the url that flask is running on(http://127.0.0.1:5000/) add "6889final/insert"
+def data_sender(data,url= "http://127.0.0.1:5000/6889final/insert"):
+    headers = {
+        "Content-Type": "application/json; charset=UTF-8"
+    }
+    response = requests.post(url, data=json.dumps(data), headers=headers).text
+   #If data is json type,change the above line to
+   #response = requests.post(url, data=data, headers=headers).text
+    print(response)      
+      
+      
 if __name__ == "__main__":
     '''
     First attempt: 
