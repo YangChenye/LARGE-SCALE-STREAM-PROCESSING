@@ -12,7 +12,8 @@ from datetime import datetime
 from pyspark.sql.functions import *
 import requests
 import json
-
+import asyncio
+import websockets
 
 
 # format the print output
@@ -72,17 +73,13 @@ class Stream_Processor_Thread(threading.Thread):
         '''Not using watermark'''
         log_simple = self.log_tuples.map(lambda x: (x[1], x[4])) # ('protocol', packet_size)
         log_agg = log_simple.reduceByKey(lambda x,y: x+y)
-        def countWords(newValues, lastSum):
-            if lastSum is None :
-                lastSum = 0
-            return sum(newValues, lastSum)
+        log_sum = log_agg.map(lambda x: ('str', x[1])).reduceByKey(lambda x,y: x+y)
         # log_reduced = log_agg.reduce(lambda x: x[1] > self.H)
         # log_reduced = log_agg.updateStateByKey(update_func)
-
-        log_reduced = log_agg.reduce(countWords)
+        # log_reduced = log_agg.reduce()
         print('protocols that are consuming more than {} percent of the total external bandwidth over the last {} time units'.format(self.H, self.T))
-        log_reduced.pprint()
-
+        # log_reduced.pprint()
+        log_sum.pprint()
         return
 
     # List the top-k most resource intensive protocols over the last T time units
@@ -91,9 +88,9 @@ class Stream_Processor_Thread(threading.Thread):
         log_agg = log_simple.reduceByKey(lambda x, y: x + y) # sum up the packet sizes
         log_sorted = log_agg.transform(lambda rdd: rdd.sortBy(lambda x: x[1], ascending=False)) # sort, top-k
         print('the top-{} most resource intensive protocols over the last {} time units'.format(self.k, self.T))
-        # log_sorted.pprint(num=self.k)
-        log_top_k = log_sorted.take(self.k)
-        print([' '.join(map(str, item)) for item in log_top_k])
+        log_sorted.pprint(num=self.k)
+        # log_top_k = log_sorted.take(self.k)
+        # print([' '.join(map(str, item)) for item in log_top_k])
         return
 
     # List all protocols that are consuming more than X times the standard deviation of
@@ -168,7 +165,7 @@ class Stream_Processor_Thread(threading.Thread):
         # self.function1()
         '''Not using watermark'''
         # self.log_tuples.pprint()
-        self.function2()
+        self.function1()
 
         self.ssc.start()
         self.ssc.awaitTermination()
@@ -181,27 +178,41 @@ class Recv_Control_Thread(threading.Thread):
         self.name = name
 
     def recv_control(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind(('localhost', 12303))  # port localhost:12303 is used to receive control signal
-        sock.listen(5)  # the max connection number, FIFO
-        print(
-            '{}{}GOOD:{}{} Connection complete. Stream Processor is listening control signal, from port 12303.'.format(
-                Color.GREEN, Color.BOLD, Color.END, Color.END))
-        while True:  # wait for connection
-            connection, address = sock.accept()
-            control = connection.recv(1024).decode("utf-8")
-            if control == 'stop_receive_Data_Thread':
-                connection.send(b'Stop receiving data signal received, closing now')
-                global stop_receive_Thread
-                stop_receive_Thread = True
-            # elif control == 'start_send_Thread':
-            #     connection.send(b'Start signal received, starting now')
-            #     send_Thread = Send_Thread(threadID=1, name='send_Thread')
-            #     send_Thread.start()
-            #     send_Thread.join()
-            connection.send(b'Control signal received')
-            connection.close()
-            print('The control signal received is: ' + control)
+        '''using socket to communicate with web ui'''
+        # sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # sock.bind(('localhost', 12303))  # port localhost:12303 is used to receive control signal
+        # sock.listen(5)  # the max connection number, FIFO
+        # print(
+        #     '{}{}GOOD:{}{} Connection complete. Stream Processor is listening control signal, from port 12303.'.format(
+        #         Color.GREEN, Color.BOLD, Color.END, Color.END))
+        # while True:  # wait for connection
+        #     connection, address = sock.accept()
+        #     control = connection.recv(1024).decode("utf-8")
+        #     if control == 'stop_receive_Data_Thread':
+        #         connection.send(b'Stop receiving data signal received, closing now')
+        #         global stop_receive_Thread
+        #         stop_receive_Thread = True
+        #     # elif control == 'start_send_Thread':
+        #     #     connection.send(b'Start signal received, starting now')
+        #     #     send_Thread = Send_Thread(threadID=1, name='send_Thread')
+        #     #     send_Thread.start()
+        #     #     send_Thread.join()
+        #     connection.send(b'Control signal received')
+        #     connection.close()
+        #     print('The control signal received is: ' + control)
+        '''using websocket to communicate with web ui'''
+
+        async def generator(websocket, path):
+            msg = await websocket.recv()
+            print(msg)
+
+            response = 'KEKW'
+            await websocket.send(response)
+
+        start_server = websockets.serve(generator, "localhost", 12303) # port localhost:12303 is used to receive control signal
+
+        asyncio.get_event_loop().run_until_complete(start_server)
+        asyncio.get_event_loop().run_forever()
 
     # override run() in Thread. When start() is called, run() is called.
     def run(self) -> None:

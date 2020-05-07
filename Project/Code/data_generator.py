@@ -7,6 +7,8 @@ import threading
 import time
 from datetime import datetime
 import pytz
+import asyncio
+import websockets
 
 # format the print output
 class Color:
@@ -83,7 +85,6 @@ class Data_Generator():
         # time = datetime.now(tz=pytz.timezone('US/Eastern'))
         dataToSend = '{} {} {} {} {}'.format(time, protocol, sourceIP, destinationIP, packetSize)
         return dataToSend
-
 
 # data sending thread of data generator
 class Send_Data_Thread(threading.Thread):
@@ -167,6 +168,7 @@ class Recv_Control_Thread(threading.Thread):
         self.name = name
 
     def recv_control(self):
+        '''using socket to communicate with web ui'''
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(('localhost', 12302))  # port localhost:12302 is used to receive control signal
         sock.listen(5)  # the max connection number, FIFO
@@ -201,6 +203,54 @@ class Recv_Control_Thread(threading.Thread):
         self.recv_control()
 
 
+# control receiving thread of data generator
+def recv_control():
+    '''using websocket to communicate with web ui'''
+    async def generator(websocket, path):
+        global rate
+        global ipNum
+        global protocolNum
+        global ipPercent
+        global protocolPercent
+        global stop_send_Thread
+        print('{}{}GOOD:{}{} Control receiving thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
+        msg = await websocket.recv()
+        print(msg)
+        response = 'RCVD'
+        if msg == 'stop':
+            # response = 'stop signal received, closing now'
+            stop_send_Thread = True
+        elif msg == 'start':
+            # response = 'start signal received, starting now'
+            send_Data_Thread = Send_Data_Thread(threadID=1, name='send_Data_Thread', rate=rate, ipNum=ipNum,
+                                                protocolNum=protocolNum, ipPercent=ipPercent,
+                                                protocolPercent=protocolPercent)
+            send_Data_Thread.start()
+            print('{}{}GOOD:{}{} Data sending thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
+            send_Data_Thread.join()
+        elif msg.split('_')[0] == 'change':
+            stop_send_Thread = True
+            time.sleep(1) # wait for the thread ending
+            msgs = msg.split('_')
+            rate = int(msgs[0])
+            ipNum = int(msgs[1])
+            protocolNum = int(msgs[2])
+            # ipPercent =
+            send_Data_Thread = Send_Data_Thread(threadID=1, name='send_Data_Thread', rate=rate, ipNum=ipNum,
+                                                protocolNum=protocolNum, ipPercent=ipPercent,
+                                                protocolPercent=protocolPercent)
+            send_Data_Thread.start()
+            print('{}{}GOOD:{}{} Data sending thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
+            send_Data_Thread.join()
+
+        await websocket.send(response)
+
+    start_server = websockets.serve(generator, "localhost", 12302) # port localhost:12302 is used to receive control signal
+
+    asyncio.get_event_loop().run_until_complete(start_server)
+    asyncio.get_event_loop().run_forever()
+
+
 if __name__ == "__main__":
     # global variables for data generator
     stop_send_Thread = False
@@ -214,13 +264,13 @@ if __name__ == "__main__":
     # initialize classes
     send_Data_Thread = Send_Data_Thread(threadID=1, name='send_Data_Thread', rate=rate, ipNum=ipNum,
                                         protocolNum=protocolNum, ipPercent=ipPercent, protocolPercent=protocolPercent)
-    recv_Control_Thread = Recv_Control_Thread(threadID=2, name='recv_Control_Thread')
+    # recv_Control_Thread = Recv_Control_Thread(threadID=2, name='recv_Control_Thread')
     # start threads
     send_Data_Thread.start()
     print('{}{}GOOD:{}{} Data sending thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
-    recv_Control_Thread.start()
+    # recv_Control_Thread.start()
+    recv_control()
     print('{}{}GOOD:{}{} Control receiving thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
     # wait till threads terminate
     send_Data_Thread.join()
-    recv_Control_Thread.join()
-
+    # recv_Control_Thread.join()
