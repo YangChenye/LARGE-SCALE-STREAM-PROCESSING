@@ -179,44 +179,48 @@ class Recv_Control_Thread(threading.Thread):
 
     def recv_control(self):
         '''using socket to communicate with web ui'''
-        # sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # sock.bind(('localhost', 12303))  # port localhost:12303 is used to receive control signal
-        # sock.listen(5)  # the max connection number, FIFO
-        # print(
-        #     '{}{}GOOD:{}{} Connection complete. Stream Processor is listening control signal, from port 12303.'.format(
-        #         Color.GREEN, Color.BOLD, Color.END, Color.END))
-        # while True:  # wait for connection
-        #     connection, address = sock.accept()
-        #     control = connection.recv(1024).decode("utf-8")
-        #     if control == 'stop_receive_Data_Thread':
-        #         connection.send(b'Stop receiving data signal received, closing now')
-        #         global stop_receive_Thread
-        #         stop_receive_Thread = True
-        #     # elif control == 'start_send_Thread':
-        #     #     connection.send(b'Start signal received, starting now')
-        #     #     send_Thread = Send_Thread(threadID=1, name='send_Thread')
-        #     #     send_Thread.start()
-        #     #     send_Thread.join()
-        #     connection.send(b'Control signal received')
-        #     connection.close()
-        #     print('The control signal received is: ' + control)
-        '''using websocket to communicate with web ui'''
-
-        async def generator(websocket, path):
-            msg = await websocket.recv()
-            print(msg)
-
-            response = 'KEKW'
-            await websocket.send(response)
-
-        start_server = websockets.serve(generator, "localhost", 12303) # port localhost:12303 is used to receive control signal
-
-        asyncio.get_event_loop().run_until_complete(start_server)
-        asyncio.get_event_loop().run_forever()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind(('localhost', 12303))  # port localhost:12303 is used to receive control signal
+        sock.listen(5)  # the max connection number, FIFO
+        print(
+            '{}{}GOOD:{}{} Connection complete. Stream Processor is listening control signal, from port 12303.'.format(
+                Color.GREEN, Color.BOLD, Color.END, Color.END))
+        while True:  # wait for connection
+            connection, address = sock.accept()
+            control = connection.recv(1024).decode("utf-8")
+            if control == 'stop_receive_Data_Thread':
+                connection.send(b'Stop receiving data signal received, closing now')
+                global stop_receive_Thread
+                stop_receive_Thread = True
+            # elif control == 'start_send_Thread':
+            #     connection.send(b'Start signal received, starting now')
+            #     send_Thread = Send_Thread(threadID=1, name='send_Thread')
+            #     send_Thread.start()
+            #     send_Thread.join()
+            connection.send(b'Control signal received')
+            connection.close()
+            print('The control signal received is: ' + control)
 
     # override run() in Thread. When start() is called, run() is called.
     def run(self) -> None:
         self.recv_control()
+
+
+# control receiving thread of stream processor
+def recv_control():
+    '''using websocket to communicate with web ui'''
+    async def generator(websocket, path):
+        msg = await websocket.recv()
+        print(msg)
+
+        response = 'KEKW'
+        await websocket.send(response)
+
+    start_server = websockets.serve(generator, "localhost", 12303) # port localhost:12303 is used to receive control signal
+
+    asyncio.get_event_loop().run_until_complete(start_server)
+    asyncio.get_event_loop().run_forever()
+
 
 # data receiving thread of stream processor
 class Recv_Data_Thread(threading.Thread):
@@ -295,3 +299,5 @@ if __name__ == "__main__":
     stream_Processor_Thread.start()
     print('{}{}GOOD:{}{} Stream processor thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
     stream_Processor_Thread.join()
+
+    recv_control()

@@ -269,8 +269,9 @@ if __name__ == "__main__":
     send_Data_Thread.start()
     print('{}{}GOOD:{}{} Data sending thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
     # recv_Control_Thread.start()
-    recv_control()
-    print('{}{}GOOD:{}{} Control receiving thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
+    # print('{}{}GOOD:{}{} Control receiving thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
     # wait till threads terminate
     send_Data_Thread.join()
     # recv_Control_Thread.join()
+
+    recv_control()
