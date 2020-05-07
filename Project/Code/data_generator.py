@@ -1,10 +1,12 @@
 # Created by Chenye Yang on 2020/5/1.
 # Copyright © 2020 Chenye Yang. All rights reserved.
 
+import random
 import socket
-import time
 import threading
-from random import randint
+import time
+from datetime import datetime
+import pytz
 
 # format the print output
 class Color:
@@ -25,27 +27,74 @@ class Data_Generator():
         self.rate = rate # <int> Hz
         self.ipNum = ipNum # <int> less than or equal to 15
         self.protocolNum = protocolNum # <int> less than or equal to 19
-        self.ipPercent = ipPercent # <float list>
-        self.protocolPercent = protocolPercent # <float list>
+        # what if the percent list is wrong
+        if len(ipPercent) != ipNum:
+            self.ipPercentPDF = [1 / ipNum for i in range(ipNum)]
+        else:
+            self.ipPercentPDF = ipPercent
+        if len(protocolPercent) != protocolNum:
+            self.protocolPercentPDF = [1 / protocolNum for i in range(protocolNum)]
+        else:
+            self.protocolPercentPDF = protocolPercent
+        # convert the pdf list to cdf list
+        self.ipPercent = self.PDF2CDF(self.ipPercentPDF)
+        self.protocolPercent = self.PDF2CDF(self.protocolPercentPDF)
         self.protocols = ['SOAP', 'SSDP', 'TCAP', 'UPnP', 'DHCP', 'DNS', 'HTTP', 'HTTPS', 'NFS', 'POP3', 'SMTP', 'SNMP',
                           'FTP', 'NTP', 'IRC', 'Telnet', 'SSH', 'TFTP', 'AMQP']
         self.ips = ['53.215.218.189', '133.98.231.165', '222.186.237.75', '11.71.50.83', '45.43.227.63',
                     '116.168.68.91', '20.232.17.27', '158.223.93.237', '84.191.253.211', '153.17.103.198',
                     '224.80.117.250', '97.211.109.139', '21.50.108.54', '109.126.189.56', '90.227.18.21']
 
-    def data_generator(self):
-        packetSize = randint(16, 12288) # generate the size of network packet, Byte
+    def PDF2CDF(self, PDF):
+        # convert the pdf to cdf
+        # pdf=[0.1, 0.2, 0.3, 0.4] -> cdf=[0.1, 0.3, 0.6, 1.0]
+        CDF = PDF
+        for i in range(1, len(CDF)):
+            CDF[i] = CDF[i] + CDF[i-1]
+        return CDF
 
-        dataToSend = ''
+    def data_generator(self):
+        # At its finest level, individual flows are identified and associated with an application protocol,
+        # a source and destination IP addresses, as well as a set of network packets and their sizes.
+
+        # decide which protocol to generate
+        r = random.random()
+        i = 0
+        for i in range(self.protocolNum):
+            if r < self.protocolPercent[i]:
+                break
+        protocol = self.protocols[i]
+        # decide which source IP to generate
+        r = random.random()
+        i = 0
+        for i in range(self.ipNum):
+            if r < self.ipPercent[i]:
+                break
+        sourceIP = self.ips[i]
+        # decide which destination IP to generate
+        r = random.random()
+        i = 0
+        for i in range(self.ipNum):
+            if r < self.ipPercent[i]:
+                break
+        destinationIP = self.ips[i]
+        packetSize = random.randint(16, 12288)  # generate the size of network packet, Byte
+        time = datetime.now(tz=pytz.timezone('US/Eastern'))
+        dataToSend = '{} {} {} {} {}'.format(time, protocol, sourceIP, destinationIP, packetSize)
         return dataToSend
 
 
 # data sending thread of data generator
 class Send_Data_Thread(threading.Thread):
-    def __init__(self, threadID, name):
+    def __init__(self, threadID, name, rate, ipNum, protocolNum, ipPercent, protocolPercent):
         threading.Thread.__init__(self)
         self.threadID = threadID
         self.name = name
+        self.rate = rate  # <int> Hz
+        self.ipNum = ipNum  # <int> less than or equal to 15
+        self.protocolNum = protocolNum  # <int> less than or equal to 19
+        self.ipPercent = ipPercent  # <float list>
+        self.protocolPercent = protocolPercent  # <float list>
 
     def send_data(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -57,12 +106,14 @@ class Send_Data_Thread(threading.Thread):
                     Color.RED, Color.BOLD, Color.END, Color.END))
             sock.close() # close socket before exit
             return # then this thread is terminated
-        data = b'1'
+        # data = b'1'
+        data_Generator = Data_Generator(self.rate, self.ipNum, self.protocolNum, self.ipPercent, self.protocolPercent)
         print('{}{}GOOD:{}{} Connection complete. Data Generator is sending generated data, to port 12301.'.format(
             Color.GREEN, Color.BOLD, Color.END, Color.END))
         try:
             while True:
-                time.sleep(3)
+                time.sleep(1 / self.rate) # sending frequency
+                data = data_Generator.data_generator().encode('utf-8')
                 print('Data sending: ' + str(data))
                 sock.send(data)
                 sock.recv(1024).decode("utf-8")
@@ -100,7 +151,14 @@ class Recv_Control_Thread(threading.Thread):
                 stop_send_Thread = True
             elif control == 'start_send_Thread':
                 connection.send(b'Start signal received, starting now')
-                send_Data_Thread = Send_Data_Thread(threadID=1, name='send_Data_Thread')
+                global rate
+                global ipNum
+                global protocolNum
+                global ipPercent
+                global protocolPercent
+                send_Data_Thread = Send_Data_Thread(threadID=1, name='send_Data_Thread', rate=rate, ipNum=ipNum,
+                                                    protocolNum=protocolNum, ipPercent=ipPercent,
+                                                    protocolPercent=protocolPercent)
                 send_Data_Thread.start()
                 send_Data_Thread.join()
             connection.send(b'received')
@@ -115,10 +173,16 @@ class Recv_Control_Thread(threading.Thread):
 if __name__ == "__main__":
     # global variables for data generator
     stop_send_Thread = False
+    rate = 5
+    ipNum = 5
+    protocolNum = 8
+    ipPercent = []
+    protocolPercent = []
 
     print(' Data Generator is starting '.center(100, '*'))
     # initialize classes
-    send_Data_Thread = Send_Data_Thread(threadID=1, name='send_Data_Thread')
+    send_Data_Thread = Send_Data_Thread(threadID=1, name='send_Data_Thread', rate=rate, ipNum=ipNum,
+                                        protocolNum=protocolNum, ipPercent=ipPercent, protocolPercent=protocolPercent)
     recv_Control_Thread = Recv_Control_Thread(threadID=2, name='recv_Control_Thread')
     # start threads
     send_Data_Thread.start()
@@ -128,5 +192,4 @@ if __name__ == "__main__":
     # wait till threads terminate
     send_Data_Thread.join()
     recv_Control_Thread.join()
-
 
