@@ -262,14 +262,14 @@ if __name__ == "__main__":
     # initialize classes
     send_Data_Thread = Send_Data_Thread(threadID=1, name='send_Data_Thread', rate=rate, ipNum=ipNum,
                                         protocolNum=protocolNum, ipPercent=ipPercent, protocolPercent=protocolPercent)
-    # recv_Control_Thread = Recv_Control_Thread(threadID=2, name='recv_Control_Thread')
+    recv_Control_Thread = Recv_Control_Thread(threadID=2, name='recv_Control_Thread')
     # start threads
     send_Data_Thread.start()
     print('{}{}GOOD:{}{} Data sending thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
-    # recv_Control_Thread.start()
-    # print('{}{}GOOD:{}{} Control receiving thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
+    recv_Control_Thread.start()
+    print('{}{}GOOD:{}{} Control receiving thread started'.format(Color.GREEN, Color.BOLD, Color.END, Color.END))
     # wait till threads terminate
     send_Data_Thread.join()
-    # recv_Control_Thread.join()
+    recv_Control_Thread.join()
 
-    recv_control()
+    # recv_control()
