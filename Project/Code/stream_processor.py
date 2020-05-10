@@ -96,13 +96,23 @@ class Stream_Processor_Thread(threading.Thread):
         #     f.write(json_string)
         # log_agg.pprint()
 
+        self.target = self.log_tuples_df.select('datetime', 'protocol', 'packet_size')
 
-        log_windowed = self.log_tuples_df \
-            .withWatermark('datetime', '1 minute') \
-            .groupBy(window(self.log_tuples_df.datetime, '{} seconds'.format(self.T), '1 second'),
-                     self.log_tuples_df.protocol) \
-            .agg(sum('packet_size')) \
-            .orderBy(['window.start', 'sum(packet_size)'], ascending=[True, False])
+        self.threshold = self.target.withWatermark('datetime', '1 minute') \
+            .groupBy(window(self.target.datetime, '{} seconds'.format(self.T), '1 second')) \
+            .agg(sum('packet_size')).withColumnRenamed("sum(packet_size)", "threshold")
+
+        self.protocol_size = self.target.withWatermark('datetime', '1 minute') \
+            .groupBy(window(self.target.datetime, '{} seconds'.format(self.T), '1 second'), self.target.protocol) \
+            .agg(sum('packet_size')).withColumnRenamed("sum(packet_size)", "protocol_size") \
+            .orderBy(['window.start', 'protocol_size'], ascending=[True, False])
+
+        self.threshold.withColumn("protocol_size", self.threshold["threshold"]*self.H)
+
+        self.protocol_size.writeStream.outputMode("complete").format('console').start().awaitTermination()
+
+        # self.result1.writeStream.outputMode("complete").format('console').start().awaitTermination()
+
         return
 
     # List the top-k most resource intensive protocols over the last T time units
@@ -114,11 +124,32 @@ class Stream_Processor_Thread(threading.Thread):
         # log_sorted.pprint(num=self.k)
         # # log_top_k = log_sorted.take(self.k)
         # # print([' '.join(map(str, item)) for item in log_top_k])
+
+        self.target = self.log_tuples_df.select('datetime', 'protocol', 'packet_size')
+
+        self.result2 = self.target.withWatermark('datetime', '1 minute') \
+            .groupBy(window(self.target.datetime, '{} seconds'.format(self.T), '1 second'), self.target.protocol) \
+            .agg(sum('packet_size')).withColumnRenamed("sum(packet_size)", "protocol_size") \
+            .orderBy(['window.start', 'protocol_size'], ascending=False) \
+            .limit(self.k)
+
+        self.result2.writeStream.outputMode("complete").format('console').start().awaitTermination()
+
         return
 
     # List all protocols that are consuming more than X times the standard deviation of
     # the average traffic consumption of all protocols over the last T time units
     def function3(self):
+
+        self.target = self.log_tuples_df.select('datetime', 'protocol', 'packet_size')
+
+        self.avg_size = self.target.withWatermark('datetime', '1 minute') \
+            .groupBy(window(self.target.datetime, '{} seconds'.format(self.T), '1 second'), self.target.protocol) \
+            .agg(avg('packet_size')).withColumnRenamed("avg(packet_size)", "avg_size") \
+            .orderBy(['window.start', 'avg_size'], ascending=False) \
+
+        self.avg_size.writeStream.outputMode("complete").format('console').start().awaitTermination()
+
         return
 
     # List IP addresses that are consuming more than H percent of the total external
@@ -226,9 +257,10 @@ class Stream_Processor_Thread(threading.Thread):
             # | -- source_ip: string(nullable=true)
             # | -- destination_ip: string(nullable=true)
             # | -- packet_size: integer(nullable=true)
-        self.query = self.log_tuples_df.writeStream.format('console').start().awaitTermination()
 
-        # self.function1()
+        # self.query = self.log_tuples_df.writeStream.format('console').start().awaitTermination()
+
+        self.function3()
 
         # '''Not using watermark'''
         # # self.log_tuples.pprint()
