@@ -1,2 +1,2 @@
 # LARGE-SCALE-STREAM-PROCESSING
- ELEN E6889 Large Scale Stream Processing
+Columbia University ELEN E6889 Large Scale Stream Processing
