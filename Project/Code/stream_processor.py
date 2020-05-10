@@ -52,7 +52,7 @@ class Stream_Processor_Thread(threading.Thread):
     # List protocols that are consuming more than H percent of the total external
     # bandwidth over the last T time units
     def function1(self):
-        # '''Attempt to use structured streaming and watermark'''
+        '''First Attempt, use streaming data to create a Dataframe'''
         #
         # # with watermark, we can handle the late data properly. Discard very late data and keep not very late data.
         # # with window size = T seconds slide = 1 second, we group the log in T seconds by "datetime"
@@ -73,7 +73,7 @@ class Stream_Processor_Thread(threading.Thread):
         # # print('All the windowed data')
         # # log_windowed.show(20, truncate=False)
         #
-        # '''Not using watermark'''
+        '''Second Attempt, directly use StreamingContext socketTextStream'''
         # log_simple = self.log_tuples.map(lambda x: (x[1], x[4])) # ('protocol', packet_size)
         # log_agg = log_simple.reduceByKey(lambda x,y: x+y)
         # log_sum = log_agg.map(lambda x: ('str', x[1])).reduceByKey(lambda x,y: x+y)
@@ -95,28 +95,22 @@ class Stream_Processor_Thread(threading.Thread):
         # with open("./checkpoints/function1.json", "w") as f:
         #     f.write(json_string)
         # log_agg.pprint()
-
+        '''Third Attempt, use SparkSession readStream'''
         self.target = self.log_tuples_df.select('datetime', 'protocol', 'packet_size')
-
         self.threshold = self.target.withWatermark('datetime', '1 minute') \
             .groupBy(window(self.target.datetime, '{} seconds'.format(self.T), '1 second')) \
             .agg(sum('packet_size')).withColumnRenamed("sum(packet_size)", "threshold")
-
         self.protocol_size = self.target.withWatermark('datetime', '1 minute') \
             .groupBy(window(self.target.datetime, '{} seconds'.format(self.T), '1 second'), self.target.protocol) \
             .agg(sum('packet_size')).withColumnRenamed("sum(packet_size)", "protocol_size") \
             .orderBy(['window.start', 'protocol_size'], ascending=[True, False])
-
         self.threshold.withColumn("protocol_size", self.threshold["threshold"]*self.H)
-
         self.protocol_size.writeStream.outputMode("complete").format('console').start().awaitTermination()
-
-        # self.result1.writeStream.outputMode("complete").format('console').start().awaitTermination()
-
         return
 
     # List the top-k most resource intensive protocols over the last T time units
     def function2(self):
+        '''Second Attempt, directly use StreamingContext socketTextStream'''
         # log_simple = self.log_tuples.map(lambda x: (x[1], x[4])) # ('protocol', packet_size)
         # log_agg = log_simple.reduceByKey(lambda x, y: x + y) # sum up the packet sizes
         # log_sorted = log_agg.transform(lambda rdd: rdd.sortBy(lambda x: x[1], ascending=False)) # sort, top-k
@@ -124,50 +118,71 @@ class Stream_Processor_Thread(threading.Thread):
         # log_sorted.pprint(num=self.k)
         # # log_top_k = log_sorted.take(self.k)
         # # print([' '.join(map(str, item)) for item in log_top_k])
-
+        '''Third Attempt, use SparkSession readStream'''
         self.target = self.log_tuples_df.select('datetime', 'protocol', 'packet_size')
-
         self.result2 = self.target.withWatermark('datetime', '1 minute') \
             .groupBy(window(self.target.datetime, '{} seconds'.format(self.T), '1 second'), self.target.protocol) \
             .agg(sum('packet_size')).withColumnRenamed("sum(packet_size)", "protocol_size") \
             .orderBy(['window.start', 'protocol_size'], ascending=False) \
             .limit(self.k)
-
         self.result2.writeStream.outputMode("complete").format('console').start().awaitTermination()
-
         return
 
     # List all protocols that are consuming more than X times the standard deviation of
     # the average traffic consumption of all protocols over the last T time units
     def function3(self):
-
+        '''Third Attempt, use SparkSession readStream'''
         self.target = self.log_tuples_df.select('datetime', 'protocol', 'packet_size')
-
         self.avg_size = self.target.withWatermark('datetime', '1 minute') \
             .groupBy(window(self.target.datetime, '{} seconds'.format(self.T), '1 second'), self.target.protocol) \
             .agg(avg('packet_size')).withColumnRenamed("avg(packet_size)", "avg_size") \
-            .orderBy(['window.start', 'avg_size'], ascending=False) \
-
+            .orderBy(['window.start', 'avg_size'], ascending=False)
         self.avg_size.writeStream.outputMode("complete").format('console').start().awaitTermination()
-
         return
 
     # List IP addresses that are consuming more than H percent of the total external
     # bandwidth over the last T time units
     def function4(self):
+        '''Third Attempt, use SparkSession readStream'''
+        self.target = self.log_tuples_df.select('datetime', 'source_ip', 'packet_size')
+        self.threshold = self.target.withWatermark('datetime', '1 minute') \
+            .groupBy(window(self.target.datetime, '{} seconds'.format(self.T), '1 second')) \
+            .agg(sum('packet_size')).withColumnRenamed("sum(packet_size)", "threshold")
+        self.ip_size = self.target.withWatermark('datetime', '1 minute') \
+            .groupBy(window(self.target.datetime, '{} seconds'.format(self.T), '1 second'), self.target.source_ip) \
+            .agg(sum('packet_size')).withColumnRenamed("sum(packet_size)", "ip_size") \
+            .orderBy(['window.start', 'ip_size'], ascending=[True, False])
+        self.threshold.withColumn("ip_size", self.threshold["threshold"] * self.H)
+        self.ip_size.writeStream.outputMode("complete").format('console').start().awaitTermination()
         return
 
     # List the top-k most resource intensive IP addresses over the last T time units
     def function5(self):
+        '''Third Attempt, use SparkSession readStream'''
+        self.target = self.log_tuples_df.select('datetime', 'source_ip', 'packet_size')
+        self.result2 = self.target.withWatermark('datetime', '1 minute') \
+            .groupBy(window(self.target.datetime, '{} seconds'.format(self.T), '1 second'), self.target.source_ip) \
+            .agg(sum('packet_size')).withColumnRenamed("sum(packet_size)", "ip_size") \
+            .orderBy(['window.start', 'ip_size'], ascending=False) \
+            .limit(self.k)
+        self.result2.writeStream.outputMode("complete").format('console').start().awaitTermination()
         return
 
     # List all IP addresses that are consuming more than X times the standard deviation
     # of the average traffic consumption of all IP addresses over the last T time units
     def function6(self):
+        '''Third Attempt, use SparkSession readStream'''
+        self.target = self.log_tuples_df.select('datetime', 'source_ip', 'packet_size')
+        self.avg_size = self.target.withWatermark('datetime', '1 minute') \
+            .groupBy(window(self.target.datetime, '{} seconds'.format(self.T), '1 second'), self.target.source_ip) \
+            .agg(avg('packet_size')).withColumnRenamed("avg(packet_size)", "avg_size") \
+            .orderBy(['window.start', 'avg_size'], ascending=False)
+        self.avg_size.writeStream.outputMode("complete").format('console').start().awaitTermination()
         return
 
     # override run() in Thread. When start() is called, run() is called.
     def run(self) -> None:
+        '''Second Attempt, directly use StreamingContext socketTextStream'''
         # self.conf = pyspark.SparkConf().setAppName('Project').setMaster('local[*]')  # set the configuration
         # self.sc = pyspark.SparkContext(conf=self.conf)  # creat a spark context object
         # self.sc.setLogLevel("ERROR")
@@ -194,7 +209,7 @@ class Stream_Processor_Thread(threading.Thread):
         (datetime.datetime(2020, 5, 7, 13, 15, 42, 7557), 'SSDP', '45.43.227.63', '45.43.227.63', 3442)
         ...
         '''
-        '''Attempt to use structured streaming and watermark'''
+        '''Third Attempt, use SparkSession readStream'''
         # use Spark Structured Streaming to ensure the deal with log data in even time,
         # rather than received time, i.e. deal with the late data
         # create a spark session
@@ -220,6 +235,8 @@ class Stream_Processor_Thread(threading.Thread):
         self.log_lines_df.printSchema()
             # root
             # | -- value: string(nullable=true)
+
+        # NOTE:
         # TextSocketSource doesn't provide any integrated parsing options. It is only possible to use one of the two formats:
         # timestamp and text if includeTimestamp is set to true, with the following schema:
         #     StructType([
@@ -260,7 +277,7 @@ class Stream_Processor_Thread(threading.Thread):
 
         # self.query = self.log_tuples_df.writeStream.format('console').start().awaitTermination()
 
-        self.function3()
+        self.function2()
 
         # '''Not using watermark'''
         # # self.log_tuples.pprint()
