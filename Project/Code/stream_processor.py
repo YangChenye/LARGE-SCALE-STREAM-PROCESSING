@@ -187,10 +187,8 @@ class Stream_Processor_Thread(threading.Thread):
             .load()
         # print(self.log_lines_df.isStreaming())
         self.log_lines_df.printSchema()
-
-        trans_udf = udf(lambda x: (
-            datetime.strptime(x.split(' ')[0], '%Y-%m-%d_%H:%M:%S.%f'), x.split(' ')[1], x.split(' ')[2],
-            x.split(' ')[3], int(x.split(' ')[4])))
+            # root
+            # | -- value: string(nullable=true)
         # TextSocketSource doesn't provide any integrated parsing options. It is only possible to use one of the two formats:
         # timestamp and text if includeTimestamp is set to true, with the following schema:
         #     StructType([
@@ -202,7 +200,7 @@ class Stream_Processor_Thread(threading.Thread):
         # If you want to change this format you 'll have to transform the stream to extract fields of interest,
         # for example with regular expressions:
         fields = partial(
-            regexp_extract, str='value', pattern='^(\w*)\s*(\w*)\s*(\w*)\s*(\w*)\s*(\w*)$'
+            regexp_extract, str='value', pattern='^([0-9]*-[0-9]*-[0-9]*_[0-9]*:[0-9]*:[0-9]*.[0-9]*)\s*(\w*)\s*([0-9]*.[0-9]*.[0-9]*.[0-9]*)\s*([0-9]*.[0-9]*.[0-9]*.[0-9]*)\s*([0-9]*)$'
         )
         self.log_tuples_df = self.log_lines_df.select(
             fields(idx=1).alias('datetime'),
@@ -210,8 +208,24 @@ class Stream_Processor_Thread(threading.Thread):
             fields(idx=3).alias('source_ip'),
             fields(idx=4).alias('destination_ip'),
             fields(idx=5).alias('packet_size')
-        )
+        ) # split the string in Structured Streaming Dataframe
         self.log_tuples_df.printSchema()
+            # root
+            # | -- datetime: string(nullable=true)
+            # | -- protocol: string(nullable=true)
+            # | -- source_ip: string(nullable=true)
+            # | -- destination_ip: string(nullable=true)
+            # | -- packet_size: string(nullable=true)
+        # change the data type of the dataframe
+        self.log_tuples_df = self.log_tuples_df.withColumn('datetime', to_timestamp('datetime', 'yyyy-MM-dd_HH:mm:ss.SSS'))
+        self.log_tuples_df = self.log_tuples_df.withColumn('packet_size', self.log_tuples_df['packet_size'].cast(IntegerType()))
+        self.log_tuples_df.printSchema()
+            # root
+            # | -- datetime: timestamp(nullable=true)
+            # | -- protocol: string(nullable=true)
+            # | -- source_ip: string(nullable=true)
+            # | -- destination_ip: string(nullable=true)
+            # | -- packet_size: integer(nullable=true)
         self.query = self.log_tuples_df.writeStream.format('console').start().awaitTermination()
 
         # self.function1()

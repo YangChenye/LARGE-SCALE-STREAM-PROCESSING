@@ -81,7 +81,7 @@ class Data_Generator():
                 break
         destinationIP = self.ips[i]
         packetSize = random.randint(16, 12288)  # generate the size of network packet, Byte
-        time = datetime.now(tz=pytz.timezone('US/Eastern')).strftime('%Y-%m-%d_%H:%M:%S.%f')
+        time = datetime.now(tz=pytz.timezone('US/Eastern')).strftime('%Y-%m-%d_%H:%M:%S.%f')[:-3]
         # time = datetime.now(tz=pytz.timezone('US/Eastern'))
         dataToSend = '{} {} {} {} {}'.format(time, protocol, sourceIP, destinationIP, packetSize)
         return dataToSend
